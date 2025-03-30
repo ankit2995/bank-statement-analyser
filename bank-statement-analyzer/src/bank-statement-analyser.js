@@ -2259,7 +2259,7 @@ const handleFeedbackSubmit = async (e) => {
       }, 1000);
     } else {
       // Production mode - submit to Netlify
-      const response = await fetch('/', {
+      const response = await fetch('/?form-name=feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams(feedbackData).toString()
