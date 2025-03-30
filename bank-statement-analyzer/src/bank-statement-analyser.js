@@ -87,6 +87,41 @@ const firebaseConfig = {
 };
 
 const BankStatementAnalyzer = () => {
+  // Add this at the beginning of your BankStatementAnalyzer component
+// Right after the component definition but before your useEffect hooks
+
+
+  // Hidden form for Netlify - Add this right after your component definition
+  useEffect(() => {
+    // Create hidden form elements that Netlify can detect during build
+    const hiddenFormHTML = `
+      <form name="feedback" netlify netlify-honeypot="bot-field" hidden>
+        <input type="text" name="emoji" />
+        <textarea name="comment"></textarea>
+        <input type="text" name="bot-field" />
+      </form>
+      
+      <form name="contact" netlify netlify-honeypot="bot-field" hidden>
+        <input type="text" name="name" />
+        <input type="email" name="email" />
+        <textarea name="message"></textarea>
+        <input type="text" name="bot-field" />
+      </form>
+    `;
+    
+    // Create a div to hold our hidden forms
+    const hiddenFormsContainer = document.createElement('div');
+    hiddenFormsContainer.style.display = 'none';
+    hiddenFormsContainer.innerHTML = hiddenFormHTML;
+    
+    // Add it to the document body
+    document.body.appendChild(hiddenFormsContainer);
+    
+    // Clean up function to remove the forms when component unmounts
+    return () => {
+      document.body.removeChild(hiddenFormsContainer);
+    };
+  }, []);
   // Inject the animation styles
   useEffect(() => {
     const style = document.createElement('style');
@@ -2192,79 +2227,80 @@ const monthlyAnalysis = Object.values(monthlyData)
   }, [analysisResults, hasGivenFeedback]);
 
   // Add feedback submission handler
-  const handleFeedbackSubmit = async (e) => {
+  // Replace your existing handleFeedbackSubmit function with this one
+const handleFeedbackSubmit = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!feedbackEmoji) return;
+  
+  // Create feedback data object
+  const feedbackData = {
+    'form-name': 'feedback',
+    emoji: feedbackEmoji,
+    comment: feedbackComment
+  };
 
-    e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
+  try {
+    // Show processing state
+    setSubmitting(true); // Add this state variable to your component
     
-    if (!feedbackEmoji) return; // Early return if no emoji selected
-    
-    // Create feedback data object
-    const feedbackData = {
-      'form-name': 'feedback',
-      emoji: feedbackEmoji,
-      comment: feedbackComment
-    };
-
-    try {
-      // Disable form submission while processing
-      const submitButton = e.target;
-      if (submitButton) submitButton.disabled = true;
-
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // In development - show success message without actual submission
-        console.log('Development mode - Feedback data:', feedbackData);
-        
-        // Show success message
-        const successMessage = document.createElement('div');
-        successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-out';
-        successMessage.textContent = '✨ Thanks for the feedback! (Development Mode)';
-        document.body.appendChild(successMessage);
-        
-        // Remove message after 3 seconds
-        setTimeout(() => {
-          successMessage.remove();
-        }, 3000);
-      } else {
-        // In production - submit to Netlify
-        const response = await fetch('/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(feedbackData).toString()
-        });
-        
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // Development mode handling
+      console.log('Development mode - Feedback data:', feedbackData);
+      
+      // Simulate success in development mode
+      setTimeout(() => {
+        showNotification('✨ Thanks for the feedback! (Development Mode)', 'success');
+        setIsFeedbackModalOpen(false);
+        setHasGivenFeedback(true);
+        setFeedbackEmoji('');
+        setFeedbackComment('');
+      }, 1000);
+    } else {
+      // Production mode - submit to Netlify
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(feedbackData).toString()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Form submission failed: ${response.status} ${response.statusText}`);
       }
-
-      // Close modal and mark feedback as given
+      
+      // Handle success
+      showNotification('✨ Thanks for the feedback!', 'success');
       setIsFeedbackModalOpen(false);
       setHasGivenFeedback(true);
-      
-      // Reset form
       setFeedbackEmoji('');
       setFeedbackComment('');
-      
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      
-      // Show error message
-      const errorMessage = document.createElement('div');
-      errorMessage.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      errorMessage.textContent = '❌ Failed to submit feedback. Please try again.';
-      document.body.appendChild(errorMessage);
-      
-      // Remove error message after 3 seconds
-      setTimeout(() => {
-        errorMessage.remove();
-      }, 3000);
-    } finally {
-      // Re-enable the submit button
-      const submitButton = e.target;
-      if (submitButton) submitButton.disabled = false;
     }
-  };
+  } catch (error) {
+    console.error('Error submitting feedback:', error);
+    showNotification('❌ Failed to submit feedback. Please try again.', 'error');
+  } finally {
+    setSubmitting(false); // Reset submitting state
+  }
+};
+
+// Add this notification function to your component
+const showNotification = (message, type = 'success') => {
+  const notification = document.createElement('div');
+  notification.className = `fixed top-4 right-4 ${
+    type === 'success' ? 'bg-green-500' : 'bg-red-500'
+  } text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fade-in-out`;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Remove notification after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+};
+
+// Add this state variable to your component
+const [submitting, setSubmitting] = useState(false);
 
   const handleCloseFeedbackModal = (e) => {
     e.preventDefault();
@@ -4046,208 +4082,287 @@ const monthlyAnalysis = Object.values(monthlyData)
       </AnimatePresence>
 
       {/* Contact Modal */}
-      <AnimatePresence>
-        {isContactModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-gray-900 rounded-lg shadow-xl max-w-lg w-full"
+ {/* Replace your existing Contact Modal with this one */}
+<AnimatePresence>
+  {isContactModalOpen && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-gray-900 rounded-lg shadow-xl max-w-lg w-full"
+      >
+        <div className="p-4 sm:p-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-semibold text-white">Contact Us</h2>
+            <button
+              onClick={() => setIsContactModalOpen(false)}
+              className="text-white/60 hover:text-white transition-colors"
             >
-              <div className="p-4 sm:p-6 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg sm:text-xl font-semibold text-white">Contact Us</h2>
-                  <button
-                    onClick={() => setIsContactModalOpen(false)}
-                    className="text-white/60 hover:text-white transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <div className="p-4 sm:p-6">
-                <form name="contact" method="POST" data-netlify="true" className="space-y-4">
-                  <input type="hidden" name="form-name" value="contact" />
-                  
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-white/70 mb-1">Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      id="name"
-                      required
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
-                      placeholder="Your name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-1">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      id="email"
-                      required
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
-                      placeholder="your@email.com"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-white/70 mb-1">Message</label>
-                    <textarea
-                      name="message"
-                      id="message"
-                      required
-                      rows="4"
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
-                      placeholder="Your message..."
-                    ></textarea>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                      </svg>
-                      Send Message
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="p-4 sm:p-6">
+          <form 
+            name="contact" 
+            method="POST" 
+            data-netlify="true" 
+            data-netlify-honeypot="bot-field" 
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              // Get form data
+              const formData = new FormData(e.target);
+              
+              // Create request body
+              const body = new URLSearchParams();
+              body.append('form-name', 'contact');
+              
+              // Add all form fields to body
+              for (const pair of formData.entries()) {
+                body.append(pair[0], pair[1]);
+              }
+              
+              // Submit the form
+              fetch('/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body
+              })
+                .then(() => {
+                  // Show success message
+                  showNotification('✨ Message sent successfully!', 'success');
+                  // Close the modal
+                  setIsContactModalOpen(false);
+                  // Reset the form by clearing all inputs
+                  e.target.reset();
+                })
+                .catch(error => {
+                  console.error('Error submitting form:', error);
+                  showNotification('❌ Failed to send message. Please try again.', 'error');
+                });
+            }}
+          >
+            <input type="hidden" name="form-name" value="contact" />
+            <p className="hidden">
+              <label>
+                Don't fill this out if you're human: <input name="bot-field" />
+              </label>
+            </p>
+            
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-white/70 mb-1">Name</label>
+              <input
+                type="text"
+                name="name"
+                id="name"
+                required
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
+                placeholder="Your name"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-1">Email</label>
+              <input
+                type="email"
+                name="email"
+                id="email"
+                required
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
+                placeholder="your@email.com"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="message" className="block text-sm font-medium text-white/70 mb-1">Message</label>
+              <textarea
+                name="message"
+                id="message"
+                required
+                rows="4"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-white/30"
+                placeholder="Your message..."
+              ></textarea>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                Send Message
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
 
       {/* Add Feedback Modal */}
-      <AnimatePresence>
-        {isFeedbackModalOpen && (
+{/* Replace your existing Feedback Modal with this one */}
+<AnimatePresence>
+  {isFeedbackModalOpen && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-white/20"
+      >
+        <form 
+          name="feedback" 
+          method="POST" 
+          data-netlify="true" 
+          data-netlify-honeypot="bot-field"
+          onSubmit={handleFeedbackSubmit}
+          className="p-6 text-center"
+        >
+          {/* These hidden inputs are required for Netlify forms */}
+          <input type="hidden" name="form-name" value="feedback" />
+          <input type="hidden" name="bot-field" className="hidden" />
+          
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+            className="text-4xl mb-4"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-white/20"
-            >
-              <div className="p-6 text-center">
-                <motion.div
-                  initial={{ y: -20 }}
-                  animate={{ y: 0 }}
-                  className="text-4xl mb-4"
-                >
-                  🎭
-                </motion.div>
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  How's Your Financial Journey Going? 
-                </h3>
-                <p className="text-white/70 mb-6">
-                  Quick question! Did our analysis make your bank statement less boring? 🤔
-                </p>
-
-                {/* Emoji Selection */}
-                <div className="grid grid-cols-5 gap-2 mb-6">
-                  {['😍', '😊', '😐', '😕', '😢'].map((emoji) => (
-                    <motion.button
-                      key={emoji}
-                      whileHover={{ scale: 1.2 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setFeedbackEmoji(emoji)}
-                      className={`text-3xl p-2 rounded-lg transition-all ${
-                        feedbackEmoji === emoji 
-                          ? 'bg-white/20 shadow-lg scale-110' 
-                          : 'hover:bg-white/10'
-                      }`}
-                    >
-                      {emoji}
-                    </motion.button>
-                  ))}
-                </div>
-
-                {/* Comment Input */}
-                <div className="mb-6">
-                  <textarea
-                    value={feedbackComment}
-                    onChange={(e) => setFeedbackComment(e.target.value)}
-                    placeholder="Any thoughts to share? Don't be shy! 💭"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3 justify-center">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleFeedbackSubmit}
-                    disabled={!feedbackEmoji}
-                    className={`px-6 py-2 rounded-xl font-medium flex items-center gap-2 ${
-                      feedbackEmoji 
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white cursor-pointer' 
-                        : 'bg-white/10 text-white/50 cursor-not-allowed'
-                    }`}
-                  >
-                    <span>Share Feedback</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleCloseFeedbackModal}
-                    className="px-6 py-2 rounded-xl font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
-                  >
-                    Maybe Later
-                  </motion.button>
-                </div>
-              </div>
-
-              {/* Fun decorative elements */}
-              <motion.div
-                className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.5, 0.3],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                }}
-              />
-              <motion.div
-                className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.5, 0.3],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  delay: 1,
-                }}
-              />
-            </motion.div>
+            🎭
           </motion.div>
-        )}
-      </AnimatePresence>
+          <h3 className="text-2xl font-bold text-white mb-2">
+            How's Your Financial Journey Going? 
+          </h3>
+          <p className="text-white/70 mb-6">
+            Quick question! Did our analysis make your bank statement less boring? 🤔
+          </p>
+
+          {/* Emoji Selection */}
+          <div className="grid grid-cols-5 gap-2 mb-6">
+            {['😍', '😊', '😐', '😕', '😢'].map((emoji) => (
+              <motion.button
+                key={emoji}
+                type="button" // Important - this makes it not submit the form
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setFeedbackEmoji(emoji)}
+                className={`text-3xl p-2 rounded-lg transition-all ${
+                  feedbackEmoji === emoji 
+                    ? 'bg-white/20 shadow-lg scale-110' 
+                    : 'hover:bg-white/10'
+                }`}
+              >
+                {emoji}
+              </motion.button>
+            ))}
+          </div>
+          
+          {/* Hidden input to store the selected emoji */}
+          <input 
+            type="hidden" 
+            name="emoji" 
+            value={feedbackEmoji} 
+          />
+
+          {/* Comment Input */}
+          <div className="mb-6">
+            <textarea
+              name="comment"
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              placeholder="Any thoughts to share? Don't be shy! 💭"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-center">
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              disabled={!feedbackEmoji || submitting}
+              className={`px-6 py-2 rounded-xl font-medium flex items-center gap-2 ${
+                feedbackEmoji && !submitting
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white cursor-pointer' 
+                  : 'bg-white/10 text-white/50 cursor-not-allowed'
+              }`}
+            >
+              {submitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <span>Share Feedback</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </>
+              )}
+            </motion.button>
+            <motion.button
+              type="button" // Important - this makes it not submit the form
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleCloseFeedbackModal}
+              className="px-6 py-2 rounded-xl font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              Maybe Later
+            </motion.button>
+          </div>
+        </form>
+
+        {/* Fun decorative elements */}
+        <motion.div
+          className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+          }}
+        />
+        <motion.div
+          className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            delay: 1,
+          }}
+        />
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
     </div>
   );
 };
