@@ -6,6 +6,8 @@ import {
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import _ from 'lodash';
+import PrivacyNotice from './PrivacyNotice'; // Import the new component
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BankStatementAnalyzer = () => {
   const [file, setFile] = useState(null);
@@ -17,6 +19,37 @@ const BankStatementAnalyzer = () => {
 
   // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57'];
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        duration: 0.5
+      }
+    }
+  };
+
+  const cardVariants = {
+    hover: {
+      scale: 1.02,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
 
   // Handle file upload
   const handleFileChange = (event) => {
@@ -579,537 +612,572 @@ const BankStatementAnalyzer = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-center">Bank Statement Analyzer</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2072&q=80')] bg-cover bg-center opacity-10 animate-pulse-slow"></div>
       
-      {/* File Upload Section */}
-      <div className="mb-8 p-6 bg-gray-50 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Upload Your Bank Statement</h2>
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-grow">
-            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg className="w-8 h-8 mb-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-gray-500">XLS, XLSX, or CSV</p>
-                {fileName && <p className="mt-2 text-sm font-medium text-blue-600">{fileName}</p>}
-              </div>
-              <input 
-                type="file" 
-                className="hidden" 
-                accept=".xls,.xlsx,.csv" 
-                onChange={handleFileChange}
-              />
-            </label>
+      {/* Content Container */}
+      <motion.div 
+        className="relative max-w-6xl mx-auto p-6"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        <motion.h1 
+          className="text-4xl font-bold mb-6 text-center text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 animate-gradient"
+          variants={itemVariants}
+        >
+          Pixel Wealth
+        </motion.h1>
+        <PrivacyNotice />
+
+        {/* File Upload Section */}
+        <motion.div 
+          className="mb-8 p-6 bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300"
+          variants={itemVariants}
+        >
+          <h2 className="text-xl font-semibold mb-4 text-white">Upload Your Bank Statement</h2>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex-grow">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-white/30 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg className="w-8 h-8 mb-4 text-white/70 animate-bounce" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="mb-2 text-sm text-white/70">
+                    <span className="font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-white/50">XLS, XLSX, or CSV</p>
+                  {fileName && <p className="mt-2 text-sm font-medium text-blue-400 animate-fade-in">{fileName}</p>}
+                </div>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept=".xls,.xlsx,.csv" 
+                  onChange={handleFileChange}
+                />
+              </label>
+            </div>
+            <motion.button 
+              onClick={analyzeStatement}
+              disabled={loading || !file}
+              className={`px-6 py-3 rounded-lg font-medium text-white transition-all duration-300 ${
+                !file 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl'
+              }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Analyzing...
+                </span>
+              ) : 'Analyze Statement'}
+            </motion.button>
           </div>
-          <button 
-            onClick={analyzeStatement}
-            disabled={loading || !file}
-            className={`px-6 py-3 rounded-lg font-medium text-white ${!file ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+          {error && <motion.p className="mt-4 text-red-400" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.p>}
+        </motion.div>
+        
+        {/* Analysis Results Section */}
+        {analysisResults && (
+          <motion.div 
+            className="mt-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            {loading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Analyzing...
-              </span>
-            ) : 'Analyze Statement'}
-          </button>
-        </div>
-        {error && <p className="mt-4 text-red-600">{error}</p>}
-      </div>
-      
-      {/* Analysis Results Section */}
-      {analysisResults && (
-        <div className="mt-8">
-          {/* Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('summary')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'summary'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Summary
-              </button>
-              <button
-                onClick={() => setActiveTab('monthly')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'monthly'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Monthly Analysis
-              </button>
-              <button
-                onClick={() => setActiveTab('categories')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'categories'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Categories
-              </button>
-              <button
-                onClick={() => setActiveTab('patterns')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'patterns'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Spending Patterns
-              </button>
-              <button
-                onClick={() => setActiveTab('insights')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'insights'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Insights
-              </button>
-            </nav>
-          </div>
-          
-          {/* Tab Content */}
-          <div className="mt-6">
-            {/* Summary Tab */}
-            {activeTab === 'summary' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Financial Summary</h2>
-                
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-blue-100 p-4 rounded-lg shadow">
-                    <h3 className="text-lg font-semibold text-blue-800">Total Income</h3>
-                    <p className="text-2xl font-bold">{formatCurrency(analysisResults.totalIncome)}</p>
-                  </div>
-                  <div className="bg-red-100 p-4 rounded-lg shadow">
-                    <h3 className="text-lg font-semibold text-red-800">Total Expenses</h3>
-                    <p className="text-2xl font-bold">{formatCurrency(analysisResults.totalExpenses)}</p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${analysisResults.netSavings >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                    <h3 className={`text-lg font-semibold ${analysisResults.netSavings >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                      Net Savings
-                    </h3>
-                    <p className="text-2xl font-bold">{formatCurrency(analysisResults.netSavings)}</p>
-                  </div>
-                  <div className={`p-4 rounded-lg shadow ${analysisResults.savingsRate >= 0 ? 'bg-purple-100' : 'bg-red-100'}`}>
-                    <h3 className={`text-lg font-semibold ${analysisResults.savingsRate >= 0 ? 'text-purple-800' : 'text-red-800'}`}>
-                      Savings Rate
-                    </h3>
-                    <p className="text-2xl font-bold">{analysisResults.savingsRate.toFixed(2)}%</p>
-                  </div>
-                </div>
-                
-                {/* Top Expenses */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Top Expenses</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="py-2 px-4 border-b text-left">Date</th>
-                          <th className="py-2 px-4 border-b text-left">Description</th>
-                          <th className="py-2 px-4 border-b text-right">Amount</th>
-                          <th className="py-2 px-4 border-b text-left">Category</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisResults.topExpenses.map((expense, index) => (
-                          <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                            <td className="py-2 px-4 border-b">{expense.date}</td>
-                            <td className="py-2 px-4 border-b">{expense.description}</td>
-                            <td className="py-2 px-4 border-b text-right">{formatCurrency(expense.debit)}</td>
-                            <td className="py-2 px-4 border-b">{expense.category}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                
-                {/* Top Income Sources */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Top Income Sources</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="py-2 px-4 border-b text-left">Date</th>
-                          <th className="py-2 px-4 border-b text-left">Description</th>
-                          <th className="py-2 px-4 border-b text-right">Amount</th>
-                          <th className="py-2 px-4 border-b text-left">Category</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisResults.topIncome.map((income, index) => (
-                          <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                            <td className="py-2 px-4 border-b">{income.date}</td>
-                            <td className="py-2 px-4 border-b">{income.description}</td>
-                            <td className="py-2 px-4 border-b text-right">{formatCurrency(income.credit)}</td>
-                            <td className="py-2 px-4 border-b">{income.category}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Tabs */}
+            <div className="border-b border-white/20 mb-6">
+              <nav className="flex -mb-px">
+                {['summary', 'monthly', 'categories', 'patterns', 'insights'].map((tab) => (
+                  <motion.button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`py-4 px-6 text-center border-b-2 font-medium text-sm transition-all duration-300 ${
+                      activeTab === tab
+                        ? 'border-blue-400 text-blue-400'
+                        : 'border-transparent text-white/70 hover:text-white hover:border-white/30'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </motion.button>
+                ))}
+              </nav>
+            </div>
             
-            {/* Monthly Analysis Tab */}
-            {activeTab === 'monthly' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Monthly Analysis</h2>
-                
-                {/* Monthly Income vs Expenses Chart */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Monthly Income vs Expenses</h3>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={analysisResults.monthlyAnalysis}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" angle={-45} textAnchor="end" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Legend />
-                        <Bar dataKey="income" name="Income" fill="#4CAF50" />
-                        <Bar dataKey="expenses" name="Expenses" fill="#F44336" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                
-                {/* Monthly Savings Chart */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Monthly Savings Trend</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={analysisResults.monthlyAnalysis}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" angle={-45} textAnchor="end" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="savings" 
-                          name="Savings" 
-                          stroke="#8884d8" 
-                          activeDot={{ r: 8 }}
-                          strokeWidth={2}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-                
-                {/* Monthly Data Table */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Monthly Details</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="py-2 px-4 border-b text-left">Month</th>
-                          <th className="py-2 px-4 border-b text-right">Income</th>
-                          <th className="py-2 px-4 border-b text-right">Expenses</th>
-                          <th className="py-2 px-4 border-b text-right">Savings</th>
-                          <th className="py-2 px-4 border-b text-right">Savings Rate</th>
-                          <th className="py-2 px-4 border-b text-center">Transactions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisResults.monthlyAnalysis.map((month, index) => (
-                          <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                            <td className="py-2 px-4 border-b">{month.month}</td>
-                            <td className="py-2 px-4 border-b text-right">{formatCurrency(month.income)}</td>
-                            <td className="py-2 px-4 border-b text-right">{formatCurrency(month.expenses)}</td>
-                            <td className={`py-2 px-4 border-b text-right ${month.savings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(month.savings)}
-                            </td>
-                            <td className={`py-2 px-4 border-b text-right ${month.savingsRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {month.savingsRate.toFixed(2)}%
-                            </td>
-                            <td className="py-2 px-4 border-b text-center">{month.transactions}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Categories Tab */}
-            {activeTab === 'categories' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Categories Analysis</h2>
-                
-                {/* Categories Charts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  {/* Expense Categories */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Expense Categories</h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={analysisResults.categorySpendingArray.slice(0, 7)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            nameKey="name"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {analysisResults.categorySpendingArray.slice(0, 7).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => formatCurrency(value)} />
-                        </PieChart>
-                      </ResponsiveContainer>
+            {/* Tab Content */}
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={activeTab}
+                className="mt-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Summary Tab */}
+                {activeTab === 'summary' && (
+                  <motion.div 
+                    className="bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.h2 className="text-2xl font-bold mb-6 text-white" variants={itemVariants}>Financial Summary</motion.h2>
+                    
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                      {[
+                        { title: 'Total Income', value: analysisResults.totalIncome, color: 'blue' },
+                        { title: 'Total Expenses', value: analysisResults.totalExpenses, color: 'red' },
+                        { 
+                          title: 'Net Savings', 
+                          value: analysisResults.netSavings, 
+                          color: analysisResults.netSavings >= 0 ? 'green' : 'red' 
+                        },
+                        { 
+                          title: 'Savings Rate', 
+                          value: `${analysisResults.savingsRate.toFixed(2)}%`, 
+                          color: analysisResults.savingsRate >= 0 ? 'purple' : 'red' 
+                        }
+                      ].map((card, index) => (
+                        <motion.div
+                          key={index}
+                          className={`bg-${card.color}-500/20 p-4 rounded-lg shadow-lg border border-${card.color}-400/30`}
+                          variants={itemVariants}
+                          whileHover="hover"
+                        >
+                          <h3 className={`text-lg font-semibold text-${card.color}-200`}>{card.title}</h3>
+                          <p className="text-2xl font-bold text-white">{typeof card.value === 'number' ? formatCurrency(card.value) : card.value}</p>
+                        </motion.div>
+                      ))}
                     </div>
-                  </div>
-                  
-                  {/* Income Categories */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Income Categories</h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={analysisResults.categoryIncomeArray.slice(0, 7)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            nameKey="name"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {analysisResults.categoryIncomeArray.slice(0, 7).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => formatCurrency(value)} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Categories Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Expense Categories Table */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Expense Categories Detail</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full bg-white border border-gray-200">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="py-2 px-4 border-b text-left">Category</th>
-                            <th className="py-2 px-4 border-b text-right">Amount</th>
-                            <th className="py-2 px-4 border-b text-right">% of Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {analysisResults.categorySpendingArray.map((category, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                              <td className="py-2 px-4 border-b">{category.name}</td>
-                              <td className="py-2 px-4 border-b text-right">{formatCurrency(category.value)}</td>
-                              <td className="py-2 px-4 border-b text-right">
-                                {((category.value / analysisResults.totalExpenses) * 100).toFixed(2)}%
-                              </td>
+                    
+                    {/* Top Expenses */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Top Expenses</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="py-2 px-4 border-b text-left">Date</th>
+                              <th className="py-2 px-4 border-b text-left">Description</th>
+                              <th className="py-2 px-4 border-b text-right">Amount</th>
+                              <th className="py-2 px-4 border-b text-left">Category</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {analysisResults.topExpenses.map((expense, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="py-2 px-4 border-b">{expense.date}</td>
+                                <td className="py-2 px-4 border-b">{expense.description}</td>
+                                <td className="py-2 px-4 border-b text-right">{formatCurrency(expense.debit)}</td>
+                                <td className="py-2 px-4 border-b">{expense.category}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                  
-                  {/* Income Categories Table */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Income Categories Detail</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full bg-white border border-gray-200">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="py-2 px-4 border-b text-left">Category</th>
-                            <th className="py-2 px-4 border-b text-right">Amount</th>
-                            <th className="py-2 px-4 border-b text-right">% of Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {analysisResults.categoryIncomeArray.map((category, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                              <td className="py-2 px-4 border-b">{category.name}</td>
-                              <td className="py-2 px-4 border-b text-right">{formatCurrency(category.value)}</td>
-                              <td className="py-2 px-4 border-b text-right">
-                                {((category.value / analysisResults.totalIncome) * 100).toFixed(2)}%
-                              </td>
+                    
+                    {/* Top Income Sources */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Top Income Sources</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="py-2 px-4 border-b text-left">Date</th>
+                              <th className="py-2 px-4 border-b text-left">Description</th>
+                              <th className="py-2 px-4 border-b text-right">Amount</th>
+                              <th className="py-2 px-4 border-b text-left">Category</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {analysisResults.topIncome.map((income, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="py-2 px-4 border-b">{income.date}</td>
+                                <td className="py-2 px-4 border-b">{income.description}</td>
+                                <td className="py-2 px-4 border-b text-right">{formatCurrency(income.credit)}</td>
+                                <td className="py-2 px-4 border-b">{income.category}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Spending Patterns Tab */}
-            {activeTab === 'patterns' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Spending Patterns</h2>
+                  </motion.div>
+                )}
                 
-                {/* Day of Week Spending */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Spending by Day of Week</h3>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={analysisResults.dayOfWeekArray}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => formatCurrency(value)} />
-                        <Bar dataKey="value" name="Amount" fill="#FF8042" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                {/* Monthly Analysis Tab */}
+                {activeTab === 'monthly' && (
+                  <motion.div 
+                    className="bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.h2 className="text-2xl font-bold mb-6 text-white" variants={itemVariants}>Monthly Analysis</motion.h2>
+                    
+                    {/* Monthly Income vs Expenses Chart */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Monthly Income vs Expenses</h3>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={analysisResults.monthlyAnalysis}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" angle={-45} textAnchor="end" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Legend />
+                            <Bar dataKey="income" name="Income" fill="#4CAF50" />
+                            <Bar dataKey="expenses" name="Expenses" fill="#F44336" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    
+                    {/* Monthly Savings Chart */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Monthly Savings Trend</h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={analysisResults.monthlyAnalysis}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" angle={-45} textAnchor="end" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="savings" 
+                              name="Savings" 
+                              stroke="#8884d8" 
+                              activeDot={{ r: 8 }}
+                              strokeWidth={2}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    
+                    {/* Monthly Data Table */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Monthly Details</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="py-2 px-4 border-b text-left">Month</th>
+                              <th className="py-2 px-4 border-b text-right">Income</th>
+                              <th className="py-2 px-4 border-b text-right">Expenses</th>
+                              <th className="py-2 px-4 border-b text-right">Savings</th>
+                              <th className="py-2 px-4 border-b text-right">Savings Rate</th>
+                              <th className="py-2 px-4 border-b text-center">Transactions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysisResults.monthlyAnalysis.map((month, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="py-2 px-4 border-b">{month.month}</td>
+                                <td className="py-2 px-4 border-b text-right">{formatCurrency(month.income)}</td>
+                                <td className="py-2 px-4 border-b text-right">{formatCurrency(month.expenses)}</td>
+                                <td className={`py-2 px-4 border-b text-right ${month.savings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(month.savings)}
+                                </td>
+                                <td className={`py-2 px-4 border-b text-right ${month.savingsRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {month.savingsRate.toFixed(2)}%
+                                </td>
+                                <td className="py-2 px-4 border-b text-center">{month.transactions}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
                 
-                {/* Recurring Transactions */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-semibold mb-4">Recurring Transactions</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="py-2 px-4 border-b text-left">Description</th>
-                          <th className="py-2 px-4 border-b text-center">Occurrences</th>
-                          <th className="py-2 px-4 border-b text-right">Avg. Amount</th>
-                          <th className="py-2 px-4 border-b text-center">Type</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisResults.potentialRecurring.map((transaction, index) => (
-                          <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                            <td className="py-2 px-4 border-b">{transaction.description}</td>
-                            <td className="py-2 px-4 border-b text-center">{transaction.occurrences}</td>
-                            <td className="py-2 px-4 border-b text-right">
-                              {formatCurrency(transaction.type === 'expense' ? transaction.avgDebit : transaction.avgCredit)}
-                            </td>
-                            <td className="py-2 px-4 border-b text-center">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                transaction.type === 'expense' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                              }`}>
-                                {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {/* Insights Tab */}
-            {activeTab === 'insights' && (
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Financial Insights</h2>
-                
-                <div className="space-y-6">
-                  {analysisResults.insights.map((insight, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-4 rounded-lg shadow ${
-                        insight.type === 'positive' ? 'bg-green-50 border-l-4 border-green-500' :
-                        insight.type === 'warning' ? 'bg-yellow-50 border-l-4 border-yellow-500' :
-                        insight.type === 'info' ? 'bg-blue-50 border-l-4 border-blue-500' :
-                        'bg-purple-50 border-l-4 border-purple-500'
-                      }`}
-                    >
-                      <div className="flex">
-                        <div className="flex-shrink-0">
-                          {insight.type === 'positive' && (
-                            <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                          {insight.type === 'warning' && (
-                            <svg className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                          )}
-                          {insight.type === 'info' && (
-                            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          )}
-                          {insight.type === 'suggestion' && (
-                            <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                          )}
+                {/* Categories Tab */}
+                {activeTab === 'categories' && (
+                  <motion.div 
+                    className="bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.h2 className="text-2xl font-bold mb-6 text-white" variants={itemVariants}>Categories Analysis</motion.h2>
+                    
+                    {/* Categories Charts */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                      {/* Expense Categories */}
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Expense Categories</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={analysisResults.categorySpendingArray.slice(0, 7)}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                nameKey="name"
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {analysisResults.categorySpendingArray.slice(0, 7).map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => formatCurrency(value)} />
+                            </PieChart>
+                          </ResponsiveContainer>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm text-gray-700">{insight.text}</p>
+                      </div>
+                      
+                      {/* Income Categories */}
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Income Categories</h3>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={analysisResults.categoryIncomeArray.slice(0, 7)}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                nameKey="name"
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              >
+                                {analysisResults.categoryIncomeArray.slice(0, 7).map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => formatCurrency(value)} />
+                            </PieChart>
+                          </ResponsiveContainer>
                         </div>
                       </div>
                     </div>
-                  ))}
-                  
-                  {/* Additional recommendations */}
-                  <div className="mt-8">
-                    <h3 className="text-xl font-semibold mb-4">Recommendations</h3>
-                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                      <h4 className="font-semibold text-lg mb-2">Based on your financial data, here are some recommendations:</h4>
-                      <ul className="list-disc pl-6 space-y-2">
-                        <li>Follow the 50/30/20 rule: 50% for needs, 30% for wants, and 20% for savings or debt repayment.</li>
-                        <li>Build an emergency fund to cover 3-6 months of expenses.</li>
-                        <li>Review your recurring expenses and subscriptions to identify potential areas to cut back.</li>
-                        <li>Consider automating savings to ensure you consistently set money aside.</li>
-                        <li>Track your expenses regularly to stay aware of your spending patterns.</li>
-                        <li>Plan for large expenses by creating specific savings goals.</li>
-                      </ul>
+                    
+                    {/* Categories Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Expense Categories Table */}
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Expense Categories Detail</h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-200">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="py-2 px-4 border-b text-left">Category</th>
+                                <th className="py-2 px-4 border-b text-right">Amount</th>
+                                <th className="py-2 px-4 border-b text-right">% of Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analysisResults.categorySpendingArray.map((category, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                  <td className="py-2 px-4 border-b">{category.name}</td>
+                                  <td className="py-2 px-4 border-b text-right">{formatCurrency(category.value)}</td>
+                                  <td className="py-2 px-4 border-b text-right">
+                                    {((category.value / analysisResults.totalExpenses) * 100).toFixed(2)}%
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      
+                      {/* Income Categories Table */}
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Income Categories Detail</h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full bg-white border border-gray-200">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="py-2 px-4 border-b text-left">Category</th>
+                                <th className="py-2 px-4 border-b text-right">Amount</th>
+                                <th className="py-2 px-4 border-b text-right">% of Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analysisResults.categoryIncomeArray.map((category, index) => (
+                                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                  <td className="py-2 px-4 border-b">{category.name}</td>
+                                  <td className="py-2 px-4 border-b text-right">{formatCurrency(category.value)}</td>
+                                  <td className="py-2 px-4 border-b text-right">
+                                    {((category.value / analysisResults.totalIncome) * 100).toFixed(2)}%
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                  </motion.div>
+                )}
+                
+                {/* Spending Patterns Tab */}
+                {activeTab === 'patterns' && (
+                  <motion.div 
+                    className="bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.h2 className="text-2xl font-bold mb-6 text-white" variants={itemVariants}>Spending Patterns</motion.h2>
+                    
+                    {/* Day of Week Spending */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Spending by Day of Week</h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={analysisResults.dayOfWeekArray}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => formatCurrency(value)} />
+                            <Bar dataKey="value" name="Amount" fill="#FF8042" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                    
+                    {/* Recurring Transactions */}
+                    <div className="mb-8">
+                      <h3 className="text-xl font-semibold mb-4">Recurring Transactions</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full bg-white border border-gray-200">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="py-2 px-4 border-b text-left">Description</th>
+                              <th className="py-2 px-4 border-b text-center">Occurrences</th>
+                              <th className="py-2 px-4 border-b text-right">Avg. Amount</th>
+                              <th className="py-2 px-4 border-b text-center">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analysisResults.potentialRecurring.map((transaction, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="py-2 px-4 border-b">{transaction.description}</td>
+                                <td className="py-2 px-4 border-b text-center">{transaction.occurrences}</td>
+                                <td className="py-2 px-4 border-b text-right">
+                                  {formatCurrency(transaction.type === 'expense' ? transaction.avgDebit : transaction.avgCredit)}
+                                </td>
+                                <td className="py-2 px-4 border-b text-center">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    transaction.type === 'expense' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                  }`}>
+                                    {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+                
+                {/* Insights Tab */}
+                {activeTab === 'insights' && (
+                  <motion.div 
+                    className="bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 p-6"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <motion.h2 className="text-2xl font-bold mb-6 text-white" variants={itemVariants}>Financial Insights</motion.h2>
+                    
+                    <div className="space-y-6">
+                      {analysisResults.insights.map((insight, index) => (
+                        <motion.div 
+                          key={index} 
+                          className={`p-4 rounded-lg shadow ${
+                            insight.type === 'positive' ? 'bg-green-50 border-l-4 border-green-500' :
+                            insight.type === 'warning' ? 'bg-yellow-50 border-l-4 border-yellow-500' :
+                            insight.type === 'info' ? 'bg-blue-50 border-l-4 border-blue-500' :
+                            'bg-purple-50 border-l-4 border-purple-500'
+                          }`}
+                          variants={itemVariants}
+                        >
+                          <div className="flex">
+                            <div className="flex-shrink-0">
+                              {insight.type === 'positive' && (
+                                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              )}
+                              {insight.type === 'warning' && (
+                                <svg className="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                              )}
+                              {insight.type === 'info' && (
+                                <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              )}
+                              {insight.type === 'suggestion' && (
+                                <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-gray-700">{insight.text}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                      
+                      {/* Additional recommendations */}
+                      <div className="mt-8">
+                        <h3 className="text-xl font-semibold mb-4">Recommendations</h3>
+                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                          <h4 className="font-semibold text-lg mb-2">Based on your financial data, here are some recommendations:</h4>
+                          <ul className="list-disc pl-6 space-y-2">
+                            <li>Follow the 50/30/20 rule: 50% for needs, 30% for wants, and 20% for savings or debt repayment.</li>
+                            <li>Build an emergency fund to cover 3-6 months of expenses.</li>
+                            <li>Review your recurring expenses and subscriptions to identify potential areas to cut back.</li>
+                            <li>Consider automating savings to ensure you consistently set money aside.</li>
+                            <li>Track your expenses regularly to stay aware of your spending patterns.</li>
+                            <li>Plan for large expenses by creating specific savings goals.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 };
