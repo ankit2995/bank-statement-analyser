@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -8,6 +8,11 @@ import * as XLSX from 'xlsx';
 import _ from 'lodash';
 import PrivacyNotice from './PrivacyNotice'; // Import the new component
 import { motion, AnimatePresence } from 'framer-motion';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
+
+// Configure PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const BankStatementAnalyzer = () => {
   const [file, setFile] = useState(null);
@@ -129,96 +134,511 @@ const BankStatementAnalyzer = () => {
     return 'Other';
   }, []);
 
-  // Analyze bank statement
-  const analyzeStatement = async () => {
-    if (!file) {
-      setError('Please select a file to analyze');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    
+  // Parse PDF file
+  const parsePDF = async (file) => {
     try {
-      const fileReader = new FileReader();
+      const arrayBuffer = await file.arrayBuffer();
       
-      fileReader.onload = function(event) {
-        try {
-          let data, workbook;
-          const fileExt = fileName.split('.').pop().toLowerCase();
-          
-          if (fileExt === 'csv') {
-            // Handle CSV files
-            const csvText = event.target.result;
-            const parsedData = Papa.parse(csvText, {
-              header: true,
-              skipEmptyLines: true,
-              dynamicTyping: true
-            });
-            
-            if (parsedData.errors.length > 0) {
-              throw new Error(`CSV parsing error: ${parsedData.errors[0].message}`);
-            }
-            
-            // Process CSV data directly
-            // This is simplified - you would need to map the CSV columns to your expected schema
-            const transactions = parsedData.data.map(row => {
-              return {
-                date: row.Date || row.date || row.txn_date || '',
-                description: row.Description || row.description || row.particulars || row.narration || '',
-                debit: parseFloat(row.Debit || row.debit || row.withdrawal || row.dr || 0) || 0,
-                credit: parseFloat(row.Credit || row.credit || row.deposit || row.cr || 0) || 0,
-                balance: row.Balance || row.balance || '',
-                category: '' // Will be set later
-              };
-            }).filter(t => t.date && (t.debit > 0 || t.credit > 0));
-            
-            processTransactions(transactions);
-          } else {
-            // Handle Excel files
-            data = new Uint8Array(event.target.result);
-            workbook = XLSX.read(data, {
-              cellStyles: true,
-              cellFormulas: true,
-              cellDates: true,
-              cellNF: true,
-              sheetStubs: true
-            });
-            
-            // Get the first sheet
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            
-            // Convert to JSON for processing
-            const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
-            processExcelData(rawData);
+      // Use minimal options to avoid worker issues
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        nativeImageDecoderSupport: 'display',
+        isEvalSupported: false
+      });
+      
+      let pdf;
+      try {
+        // First try without password
+        pdf = await loadingTask.promise;
+      } catch (e) {
+        // Check if it's a password error
+        if (e.name === 'PasswordException') {
+          // PDF is password protected
+          const password = prompt('This PDF is password protected. Please enter the password:');
+          if (!password) {
+            throw new Error('Password is required to open this PDF');
           }
-        } catch (err) {
-          console.error(err);
-          setError(`Error analyzing statement: ${err.message}`);
-          setLoading(false);
+          
+          // Try again with password
+          const passwordLoadingTask = pdfjsLib.getDocument({
+            data: arrayBuffer,
+            password: password,
+            nativeImageDecoderSupport: 'display',
+            isEvalSupported: false
+          });
+          
+          try {
+            pdf = await passwordLoadingTask.promise;
+          } catch (passwordError) {
+            throw new Error('Invalid password or PDF format not supported.');
+          }
+        } else {
+          // Some other error occurred
+          console.error("PDF loading error:", e);
+          throw new Error(`Error loading PDF: ${e.message}`);
         }
-      };
-      
-      fileReader.onerror = function() {
-        setError('Error reading file');
-        setLoading(false);
-      };
-      
-      // Read the file based on its type
-      const fileExt = fileName.split('.').pop().toLowerCase();
-      if (fileExt === 'csv') {
-        fileReader.readAsText(file);
-      } else {
-        fileReader.readAsArrayBuffer(file);
       }
-    } catch (err) {
-      console.error(err);
-      setError(`Error analyzing statement: ${err.message}`);
-      setLoading(false);
+      
+      let text = '';
+      
+      // Extract text from all pages
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        text += textContent.items.map(item => item.str).join(' ') + '\n';
+      }
+      
+      // Split text into lines
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+
+      console.log("Extracted PDF lines:", lines.slice(0, 20)); // Debug: show first 20 lines
+      
+      // ENHANCED APPROACH: Apply multiple strategies to detect transactions
+      
+      // Strategy 1: Look for standard transaction patterns with date, description, amounts
+      const transactions = extractTransactionsUsingPatterns(lines);
+      
+      if (transactions.length > 0) {
+        console.log(`Found ${transactions.length} transactions using pattern detection`);
+        return transactions;
+      }
+      
+      // Strategy 2: Try table-based extraction (header row + data rows)
+      const tableTransactions = extractTransactionsFromTables(lines);
+      
+      if (tableTransactions.length > 0) {
+        console.log(`Found ${tableTransactions.length} transactions using table extraction`);
+        return tableTransactions;
+      }
+      
+      // Strategy 3: Line-by-line extraction for less structured formats
+      const lineByLineTransactions = extractTransactionsLineByLine(lines);
+      
+      if (lineByLineTransactions.length > 0) {
+        console.log(`Found ${lineByLineTransactions.length} transactions using line-by-line extraction`);
+        return lineByLineTransactions;
+      }
+      
+      throw new Error("Could not identify transaction data in this PDF format");
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      throw new Error(`Error parsing PDF: ${error.message}`);
     }
   };
   
+  // Helper function to extract transactions using pattern detection
+  const extractTransactionsUsingPatterns = (lines) => {
+    const transactions = [];
+    
+    // Common date patterns
+    const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
+    
+    // Common amount patterns (handles different formats: 1,234.56 or 1.234,56 or 1234.56)
+    const amountPattern = /\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/g;
+    
+    // Process each line looking for transaction patterns
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip lines that are too short to be transactions
+      if (line.length < 10) continue;
+      
+      // Try to find a date
+      const dateMatch = line.match(datePattern);
+      if (!dateMatch) continue;
+      
+      const date = dateMatch[0];
+      
+      // Get the rest of the line after the date for description and amounts
+      const restOfLine = line.substring(line.indexOf(date) + date.length);
+      
+      // Find all potential amounts in the line
+      const amounts = [];
+      let match;
+      while ((match = amountPattern.exec(restOfLine)) !== null) {
+        // Clean up the amount and convert to number
+        const cleanedAmount = match[0].replace(/,/g, '.');
+        const amount = parseFloat(cleanedAmount);
+        if (!isNaN(amount)) {
+          amounts.push(amount);
+        }
+      }
+      
+      // Reset the regex pattern
+      amountPattern.lastIndex = 0;
+      
+      // If we found at least one amount, create a transaction
+      if (amounts.length > 0) {
+        // Try to determine which is debit and which is credit
+        // For simplicity, we'll assume the largest is the debit and the smallest is the credit
+        // This is a heuristic and might need adjustment based on specific statement formats
+        let debit = 0;
+        let credit = 0;
+        
+        // If we only have one amount, decide based on context clues
+        if (amounts.length === 1) {
+          const lowerLine = line.toLowerCase();
+          if (lowerLine.includes('withdrawal') || lowerLine.includes('debit') || 
+              lowerLine.includes('payment') || lowerLine.includes('dr') || 
+              lowerLine.includes('charge')) {
+            debit = amounts[0];
+          } else if (lowerLine.includes('deposit') || lowerLine.includes('credit') || 
+                   lowerLine.includes('interest') || lowerLine.includes('cr') || 
+                   lowerLine.includes('refund')) {
+            credit = amounts[0];
+          } else {
+            // Default: positive amounts are credits, negative are debits
+            if (amounts[0] < 0) {
+              debit = Math.abs(amounts[0]);
+            } else {
+              credit = amounts[0];
+            }
+          }
+        } else if (amounts.length >= 2) {
+          // If multiple amounts, try to determine which is which
+          // Sort amounts
+          amounts.sort((a, b) => a - b);
+          
+          // Check for explicit markers near the amounts in the line
+          const lineSegments = restOfLine.split(/\s+/);
+          
+          let debitAssigned = false;
+          let creditAssigned = false;
+          
+          for (let j = 0; j < lineSegments.length; j++) {
+            const segment = lineSegments[j].toLowerCase();
+            const nextSegment = j < lineSegments.length - 1 ? lineSegments[j + 1] : '';
+            
+            // Check for explicit debit/credit markers
+            if ((segment.includes('dr') || segment.includes('debit') || 
+                segment.includes('withdrawal')) && !debitAssigned) {
+              // Try to find an amount in this or the next segment
+              const segmentAmount = parseFloat(nextSegment.replace(/[^\d.-]/g, ''));
+              if (!isNaN(segmentAmount)) {
+                debit = segmentAmount;
+                debitAssigned = true;
+              } else {
+                // If no specific amount found, use the last amount
+                debit = amounts[amounts.length - 1];
+                debitAssigned = true;
+              }
+            } else if ((segment.includes('cr') || segment.includes('credit') || 
+                     segment.includes('deposit')) && !creditAssigned) {
+              // Try to find an amount in this or the next segment
+              const segmentAmount = parseFloat(nextSegment.replace(/[^\d.-]/g, ''));
+              if (!isNaN(segmentAmount)) {
+                credit = segmentAmount;
+                creditAssigned = true;
+              } else {
+                // If no specific amount found, use the first amount
+                credit = amounts[0];
+                creditAssigned = true;
+              }
+            }
+          }
+          
+          // If we couldn't assign based on markers, use position-based heuristic
+          if (!debitAssigned && !creditAssigned) {
+            // Default assignment based on position in the line
+            // This is a heuristic and might need adjustment
+            if (amounts.length === 2) {
+              // Two amounts: larger one is usually the balance, the other is the transaction
+              if (Math.abs(amounts[0]) > Math.abs(amounts[1])) {
+                // First amount is larger, treat second as transaction
+                if (amounts[1] < 0) {
+                  debit = Math.abs(amounts[1]);
+                } else {
+                  credit = amounts[1];
+                }
+              } else {
+                // Second amount is larger, treat first as transaction
+                if (amounts[0] < 0) {
+                  debit = Math.abs(amounts[0]);
+                } else {
+                  credit = amounts[0];
+                }
+              }
+            } else {
+              // Three or more amounts, more complex logic needed
+              // This is a simplified approach, might need refinement
+              let debitCandidate = 0;
+              let creditCandidate = 0;
+              
+              for (const amount of amounts) {
+                if (amount < 0 && Math.abs(amount) > debitCandidate) {
+                  debitCandidate = Math.abs(amount);
+                } else if (amount > 0 && amount > creditCandidate) {
+                  creditCandidate = amount;
+                }
+              }
+              
+              debit = debitCandidate;
+              credit = creditCandidate;
+            }
+          }
+        }
+        
+        // Clean up description, removing the date and amounts
+        let description = restOfLine;
+        // Remove all matched amounts from description
+        for (const amount of amounts) {
+          description = description.replace(amount.toString(), '');
+        }
+        // Clean up remaining punctuation and whitespace
+        description = description.replace(/\s+/g, ' ').trim();
+        
+        // Create transaction object if we have valid data
+        if ((debit > 0 || credit > 0) && description) {
+          transactions.push({
+            date,
+            description,
+            debit,
+            credit,
+            category: '' // Will be set later
+          });
+        }
+      }
+    }
+    
+    return transactions;
+  };
+  
+  // Helper function to extract transactions from tabular data
+  const extractTransactionsFromTables = (lines) => {
+    const transactions = [];
+    
+    // Try to identify a header row that contains column names
+    let headerRow = -1;
+    let dateIndex = -1;
+    let descIndex = -1;
+    let debitIndex = -1;
+    let creditIndex = -1;
+    
+    // Common header terms for each column
+    const dateTerms = ['date', 'txn date', 'transaction date', 'value date'];
+    const descTerms = ['description', 'particulars', 'narration', 'details', 'transaction'];
+    const debitTerms = ['debit', 'withdrawal', 'payment', 'dr', 'paid out', 'amount (dr)'];
+    const creditTerms = ['credit', 'deposit', 'receipt', 'cr', 'paid in', 'amount (cr)'];
+    
+    // Find header row
+    for (let i = 0; i < Math.min(lines.length, 50); i++) {
+      const line = lines[i].toLowerCase();
+      
+      // Check if this line contains header terms
+      const hasDate = dateTerms.some(term => line.includes(term));
+      const hasDesc = descTerms.some(term => line.includes(term));
+      const hasDebit = debitTerms.some(term => line.includes(term));
+      const hasCredit = creditTerms.some(term => line.includes(term));
+      
+      if ((hasDate && hasDesc) && (hasDebit || hasCredit)) {
+        headerRow = i;
+        
+        // Find positions of each column
+        for (const term of dateTerms) {
+          const pos = line.indexOf(term);
+          if (pos >= 0) {
+            dateIndex = pos;
+            break;
+          }
+        }
+        
+        for (const term of descTerms) {
+          const pos = line.indexOf(term);
+          if (pos >= 0) {
+            descIndex = pos;
+            break;
+          }
+        }
+        
+        for (const term of debitTerms) {
+          const pos = line.indexOf(term);
+          if (pos >= 0) {
+            debitIndex = pos;
+            break;
+          }
+        }
+        
+        for (const term of creditTerms) {
+          const pos = line.indexOf(term);
+          if (pos >= 0) {
+            creditIndex = pos;
+            break;
+          }
+        }
+        
+        break;
+      }
+    }
+    
+    // If we found a header row and column positions, extract transactions
+    if (headerRow >= 0 && dateIndex >= 0 && descIndex >= 0 && (debitIndex >= 0 || creditIndex >= 0)) {
+      // Determine column widths and positions
+      const columnOrder = [
+        { name: 'date', pos: dateIndex },
+        { name: 'desc', pos: descIndex },
+        { name: 'debit', pos: debitIndex >= 0 ? debitIndex : Number.MAX_SAFE_INTEGER },
+        { name: 'credit', pos: creditIndex >= 0 ? creditIndex : Number.MAX_SAFE_INTEGER }
+      ].filter(col => col.pos >= 0).sort((a, b) => a.pos - b.pos);
+      
+      // Process data rows
+      for (let i = headerRow + 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Skip lines that are too short
+        if (line.length < 10) continue;
+        
+        // Check for date pattern to validate this is a transaction line
+        const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
+        const dateMatch = line.match(datePattern);
+        if (!dateMatch) continue;
+        
+        // Extract fields based on column positions
+        let date = '';
+        let description = '';
+        let debit = 0;
+        let credit = 0;
+        
+        for (let j = 0; j < columnOrder.length; j++) {
+          const col = columnOrder[j];
+          const nextColPos = j < columnOrder.length - 1 ? columnOrder[j + 1].pos : line.length;
+          const fieldText = line.substring(col.pos, nextColPos).trim();
+          
+          if (col.name === 'date') {
+            const dateMatch = fieldText.match(datePattern);
+            if (dateMatch) date = dateMatch[0];
+          } else if (col.name === 'desc') {
+            description = fieldText;
+          } else if (col.name === 'debit') {
+            // Extract amount pattern
+            const amountMatch = fieldText.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
+            if (amountMatch) {
+              const cleanedAmount = amountMatch[0].replace(/,/g, '.');
+              debit = parseFloat(cleanedAmount);
+            }
+          } else if (col.name === 'credit') {
+            // Extract amount pattern
+            const amountMatch = fieldText.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
+            if (amountMatch) {
+              const cleanedAmount = amountMatch[0].replace(/,/g, '.');
+              credit = parseFloat(cleanedAmount);
+            }
+          }
+        }
+        
+        // Create transaction if we have valid data
+        if (date && (debit > 0 || credit > 0)) {
+          transactions.push({
+            date,
+            description,
+            debit: isNaN(debit) ? 0 : debit,
+            credit: isNaN(credit) ? 0 : credit,
+            category: '' // Will be set later
+          });
+        }
+      }
+    }
+    
+    return transactions;
+  };
+  
+  // Helper function for line-by-line transaction extraction (last resort)
+  const extractTransactionsLineByLine = (lines) => {
+    const transactions = [];
+    
+    // Date patterns
+    const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
+    
+    // Amount patterns
+    const amountPattern = /\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/;
+    
+    // Process each line individually
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.length < 10) continue;
+      
+      // Check for date
+      const dateMatch = line.match(datePattern);
+      if (!dateMatch) continue;
+      
+      const date = dateMatch[0];
+      
+      // Look for amounts
+      const amounts = [];
+      let currentLine = line;
+      let amountMatch;
+      
+      // Find all amounts in the line
+      while ((amountMatch = currentLine.match(amountPattern)) !== null) {
+        const cleanedAmount = amountMatch[0].replace(/,/g, '.');
+        const amount = parseFloat(cleanedAmount);
+        if (!isNaN(amount)) {
+          amounts.push(amount);
+        }
+        // Remove the matched amount to find the next one
+        currentLine = currentLine.replace(amountMatch[0], '');
+      }
+      
+      if (amounts.length === 0) continue;
+      
+      // Determine description - everything except date and amounts
+      let description = line;
+      description = description.replace(dateMatch[0], '');
+      for (const amount of amounts) {
+        description = description.replace(amount.toString(), '');
+      }
+      description = description.replace(/\s+/g, ' ').trim();
+      
+      // Determine debit/credit
+      let debit = 0;
+      let credit = 0;
+      
+      // Check for context clues
+      const lowerLine = line.toLowerCase();
+      if (lowerLine.includes('withdrawal') || lowerLine.includes('debit') || 
+          lowerLine.includes('dr') || lowerLine.includes('charge')) {
+        // Likely a debit transaction
+        debit = Math.max(...amounts);
+      } else if (lowerLine.includes('deposit') || lowerLine.includes('credit') || 
+               lowerLine.includes('cr') || lowerLine.includes('interest')) {
+        // Likely a credit transaction
+        credit = Math.max(...amounts);
+      } else if (amounts.length >= 2) {
+        // If we have multiple amounts, check if any are negative
+        const negativeAmounts = amounts.filter(a => a < 0);
+        const positiveAmounts = amounts.filter(a => a > 0);
+        
+        if (negativeAmounts.length > 0) {
+          debit = Math.abs(Math.min(...negativeAmounts));
+        }
+        if (positiveAmounts.length > 0) {
+          credit = Math.max(...positiveAmounts);
+        }
+        
+        // If still no clear debit/credit, use the first amount as debit (more common)
+        if (debit === 0 && credit === 0 && amounts.length > 0) {
+          debit = amounts[0];
+        }
+      } else if (amounts.length === 1) {
+        // Single amount, assume debit by default
+        debit = amounts[0];
+      }
+      
+      // Create transaction if we have valid data
+      if (date && description && (debit > 0 || credit > 0)) {
+        transactions.push({
+          date,
+          description,
+          debit: isNaN(debit) ? 0 : debit,
+          credit: isNaN(credit) ? 0 : credit,
+          category: '' // Will be set later
+        });
+      }
+    }
+    
+    return transactions;
+  };
+
   // Process Excel Data
   const processExcelData = (rawData) => {
     // Find header row
@@ -321,7 +741,99 @@ const BankStatementAnalyzer = () => {
       throw new Error("No valid transactions found in the statement");
     }
     
-    processTransactions(transactions);
+    return transactions; // Return the transactions instead of calling processTransactions directly
+  };
+
+  // Analyze bank statement
+  const analyzeStatement = async () => {
+    if (!file) {
+      setError('Please select a file to analyze');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    
+    try {
+      const fileExt = fileName.split('.').pop().toLowerCase();
+      let transactions;
+      
+      if (fileExt === 'pdf') {
+        transactions = await parsePDF(file);
+        processTransactions(transactions);
+      } else {
+        const fileReader = new FileReader();
+        
+        fileReader.onload = function(event) {
+          try {
+            let parsedTransactions;
+            
+            if (fileExt === 'csv') {
+              // Handle CSV files
+              const csvText = event.target.result;
+              const parsedData = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true
+              });
+              
+              if (parsedData.errors.length > 0) {
+                throw new Error(`CSV parsing error: ${parsedData.errors[0].message}`);
+              }
+              
+              parsedTransactions = parsedData.data.map(row => ({
+                date: row.Date || row.date || row.txn_date || '',
+                description: row.Description || row.description || row.particulars || row.narration || '',
+                debit: parseFloat(row.Debit || row.debit || row.withdrawal || row.dr || 0) || 0,
+                credit: parseFloat(row.Credit || row.credit || row.deposit || row.cr || 0) || 0,
+                balance: row.Balance || row.balance || '',
+                category: '' // Will be set later
+              })).filter(t => t.date && (t.debit > 0 || t.credit > 0));
+            } else {
+              // Handle Excel files
+              const data = new Uint8Array(event.target.result);
+              const workbook = XLSX.read(data, {
+                cellStyles: true,
+                cellFormulas: true,
+                cellDates: true,
+                cellNF: true,
+                sheetStubs: true
+              });
+              
+              const sheetName = workbook.SheetNames[0];
+              const sheet = workbook.Sheets[sheetName];
+              const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
+              parsedTransactions = processExcelData(rawData);
+            }
+            
+            if (parsedTransactions && parsedTransactions.length > 0) {
+              processTransactions(parsedTransactions);
+            } else {
+              throw new Error("No valid transactions found");
+            }
+          } catch (err) {
+            console.error(err);
+            setError(`Error analyzing statement: ${err.message}`);
+            setLoading(false);
+          }
+        };
+        
+        fileReader.onerror = function() {
+          setError('Error reading file');
+          setLoading(false);
+        };
+        
+        if (fileExt === 'csv') {
+          fileReader.readAsText(file);
+        } else {
+          fileReader.readAsArrayBuffer(file);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`Error analyzing statement: ${err.message}`);
+      setLoading(false);
+    }
   };
   
   // Process transactions for analysis
@@ -637,6 +1149,9 @@ const BankStatementAnalyzer = () => {
           variants={itemVariants}
         >
           <h2 className="text-xl font-semibold mb-4 text-white">Upload Your Bank Statement</h2>
+          <p className="text-white/70 text-sm mb-4 bg-yellow-500/20 p-2 rounded-md border border-yellow-500/30">
+            <strong>Note:</strong> Currently optimized for HDFC Bank statements in XLS format only. Other formats may not parse correctly.
+          </p>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex-grow">
               <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-white/30 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-105">
@@ -647,13 +1162,13 @@ const BankStatementAnalyzer = () => {
                   <p className="mb-2 text-sm text-white/70">
                     <span className="font-semibold">Click to upload</span> or drag and drop
                   </p>
-                  <p className="text-xs text-white/50">XLS, XLSX, or CSV</p>
+                  <p className="text-xs text-white/50">XLS, XLSX, CSV, or PDF</p>
                   {fileName && <p className="mt-2 text-sm font-medium text-blue-400 animate-fade-in">{fileName}</p>}
                 </div>
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept=".xls,.xlsx,.csv" 
+                  accept=".xls,.xlsx,.csv,.pdf" 
                   onChange={handleFileChange}
                 />
               </label>

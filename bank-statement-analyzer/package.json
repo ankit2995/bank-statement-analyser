@@ -10,6 +10,7 @@
     "firebase": "^11.5.0",
     "lodash": "^4.17.21",
     "papaparse": "^5.5.2",
+    "pdfjs-dist": "^2.16.105",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-firebase-hooks": "^5.1.1",
