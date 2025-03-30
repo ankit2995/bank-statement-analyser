@@ -2844,24 +2844,24 @@ const [submitting, setSubmitting] = useState(false);
           >
             {/* Tabs */}
             <div className="border-b border-white/20 mb-6">
-              <nav className="flex -mb-px">
-                {['summary', 'monthly', 'categories', 'patterns', 'insights'].map((tab) => (
-                  <motion.button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`py-4 px-6 text-center border-b-2 font-medium text-sm transition-all duration-300 ${
-                      activeTab === tab
-                        ? 'border-blue-400 text-blue-400'
-                        : 'border-transparent text-white/70 hover:text-white hover:border-white/30'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </motion.button>
-                ))}
-              </nav>
-            </div>
+  <nav className="grid grid-cols-3 sm:grid-cols-5 gap-2 -mb-px">
+    {['summary', 'monthly', 'categories', 'patterns', 'insights'].map((tab) => (
+      <motion.button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        className={`py-2 px-2 sm:py-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm transition-all duration-300 ${
+          activeTab === tab
+            ? 'border-blue-400 text-blue-400'
+            : 'border-transparent text-white/70 hover:text-white hover:border-white/30'
+        }`}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+      </motion.button>
+    ))}
+  </nav>
+</div>
             
             {/* Tab Content */}
             <AnimatePresence mode="wait">
