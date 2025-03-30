@@ -14,7 +14,43 @@ import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 // Configure PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
+// Add custom styles for logo animations
+const logoAnimationStyles = `
+  @keyframes pulse-slow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  
+  @keyframes ping-slow {
+    0% { opacity: 0.2; transform: translateX(0); }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.2; transform: translateX(10px); }
+  }
+  
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-ping-slow {
+    animation: ping-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+`;
+
 const BankStatementAnalyzer = () => {
+  // Inject the animation styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = logoAnimationStyles;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,62 +113,246 @@ const BankStatementAnalyzer = () => {
   };
 
   // Extract category from description
-  const extractCategory = useCallback((description) => {
-    if (!description) return 'Uncategorized';
+  // Extract category from description with enhanced financial intelligence
+const extractCategory = useCallback((description, amount) => {
+  if (!description) return 'Uncategorized';
+  
+  const descLower = String(description).toLowerCase();
+  const isCredit = amount > 0;
+  
+  // ========== INCOME CATEGORIES ==========
+  if (isCredit) {
+    // Salary and income
+    if (descLower.includes('salary') || 
+        descLower.includes('sal ') || 
+        descLower.includes('income') || 
+        descLower.includes('stipend') ||
+        descLower.includes('commission') ||
+        descLower.includes('bonus')) return 'Income - Salary';
     
-    const descLower = String(description).toLowerCase();
+    // Rental income
+    if (descLower.includes('rent') && isCredit) return 'Income - Rental';
     
-    // Specific investment categories based on user feedback
-    if (descLower.includes('gullak') || descLower.includes('gullakmoney')) return 'Investments - Digital Gold';
-    if (descLower.includes('zerodha')) return 'Investments - Direct Stocks';
-    if (descLower.includes('bse limited') || (descLower.includes('bse') && descLower.includes('tsez'))) return 'Investments - Mutual Funds';
-    if (descLower.includes('northeast') && descLower.includes('small') && descLower.includes('fin')) return 'Investments - Fixed Deposit';
+    // Interest income
+    if ((descLower.includes('interest') || descLower.includes('int cr')) && isCredit) return 'Income - Interest';
     
-    // Common categories to look for
-    if (descLower.includes('salary') || descLower.includes('income')) return 'Salary';
-    if (descLower.includes('rent')) return 'Rent';
-    if (descLower.includes('interest') || descLower.includes('dividend') || 
-        descLower.includes('invest') || descLower.includes('mutua') || 
-        descLower.includes('stock') || descLower.includes('fixed deposit') || 
-        descLower.includes('fd ')) return 'Investments';
-    if (descLower.includes('food') || descLower.includes('swiggy') || 
-        descLower.includes('zomato') || descLower.includes('restaurant') || 
-        descLower.includes('café') || descLower.includes('cafe') || 
-        descLower.includes('hotel')) return 'Food';
-    if (descLower.includes('amazon') || descLower.includes('flipkart') || 
-        descLower.includes('myntra') || descLower.includes('shopping') || 
-        descLower.includes('retail') || descLower.includes('store')) return 'Shopping';
-    if (descLower.includes('movie') || descLower.includes('entertainment') || 
-        descLower.includes('netflix') || descLower.includes('prime') || 
-        descLower.includes('hotstar') || descLower.includes('disney')) return 'Entertainment';
-    if (descLower.includes('uber') || descLower.includes('ola') || 
-        descLower.includes('transport') || descLower.includes('petrol') || 
-        descLower.includes('fuel') || descLower.includes('metro') || 
-        descLower.includes('bus') || descLower.includes('train')) return 'Transportation';
-    if (descLower.includes('medical') || descLower.includes('hospital') || 
-        descLower.includes('pharmacy') || descLower.includes('doctor') || 
-        descLower.includes('health')) return 'Healthcare';
-    if (descLower.includes('education') || descLower.includes('school') || 
-        descLower.includes('college') || descLower.includes('tuition') || 
-        descLower.includes('course')) return 'Education';
-    if (descLower.includes('utility') || descLower.includes('bill') || 
-        descLower.includes('electricity') || descLower.includes('water') || 
-        descLower.includes('gas') || descLower.includes('internet') || 
-        descLower.includes('phone') || descLower.includes('mobile')) return 'Utilities';
-    if (descLower.includes('travel') || descLower.includes('flight') || 
-        descLower.includes('hotel') || descLower.includes('holiday') || 
-        descLower.includes('trip') || descLower.includes('tour')) return 'Travel';
-        
-    // Check for transaction methods only after checking specific categories
-    if (descLower.includes('upi') || descLower.includes('imps') || 
-        descLower.includes('neft') || descLower.includes('transfer')) return 'Transfer';
+    // Refunds
+    if (descLower.includes('refund') || 
+        descLower.includes('cashback') || 
+        descLower.includes('reversal')) return 'Income - Refunds';
+  }
+  
+  // ========== INVESTMENT CATEGORIES ==========
+  // Specific investment categories based on user feedback
+  if (descLower.includes('gullak') || descLower.includes('gullakmoney')) return 'Investments - Digital Gold';
+  if (descLower.includes('zerodha') || 
+      descLower.includes('groww') || 
+      descLower.includes('upstox') ||
+      descLower.includes('icici direct') ||
+      descLower.includes('angel broking')) return 'Investments - Direct Stocks';
+  if (descLower.includes('bse limited') || 
+      (descLower.includes('bse') && descLower.includes('tsez')) ||
+      descLower.includes('kfintech') ||
+      descLower.includes('cams') ||
+      descLower.includes('sip')) return 'Investments - Mutual Funds';
+  if ((descLower.includes('northeast') && descLower.includes('small') && descLower.includes('fin')) ||
+      descLower.includes('fd ') || 
+      descLower.includes('fixed deposit') ||
+      descLower.includes('deposit opening')) return 'Investments - Fixed Deposit';
+  if (descLower.includes('ppf') || 
+      descLower.includes('nps') || 
+      descLower.includes('epf')) return 'Investments - Retirement';
+  if (descLower.includes('gold') || 
+      descLower.includes('silver') ||
+      descLower.includes('bullion')) return 'Investments - Precious Metals';
+  if (descLower.includes('crypto') || 
+      descLower.includes('bitcoin') || 
+      descLower.includes('ethereum') || 
+      descLower.includes('wazirx') ||
+      descLower.includes('coindcx')) return 'Investments - Cryptocurrency';
     
-    // Check for ATM withdrawals
-    if (descLower.includes('nwd') && descLower.includes('bengaluru')) return 'Cash Withdrawal - ATM';
-    if (descLower.includes('nwd') || descLower.includes('atm') || descLower.includes('cash withdrawal')) return 'Cash Withdrawal - ATM';
+  // General investments
+  if (descLower.includes('invest') || 
+      descLower.includes('dividend') ||
+      descLower.includes('mutua') ||
+      descLower.includes('stock') ||
+      descLower.includes('shares')) return 'Investments - General';
+  
+  // ========== INSURANCE CATEGORIES ==========
+  if (descLower.includes('life insurance') || 
+      descLower.includes('lic') || 
+      descLower.includes('hdfc life')) return 'Insurance - Life';
+  if (descLower.includes('health insurance') || 
+      descLower.includes('star health') || 
+      descLower.includes('apollo') ||
+      descLower.includes('max bupa')) return 'Insurance - Health';
+  if (descLower.includes('car insurance') || 
+      descLower.includes('vehicle insurance') || 
+      descLower.includes('two wheeler')) return 'Insurance - Vehicle';
+  if (descLower.includes('insurance') || 
+      descLower.includes('policy')) return 'Insurance - General';
+  
+  // ========== LOAN CATEGORIES ==========
+  if (descLower.includes('home loan') || 
+      descLower.includes('mortgage')) return 'Loans - Home Loan';
+  if (descLower.includes('personal loan') || 
+      descLower.includes('pl emi')) return 'Loans - Personal Loan';
+  if (descLower.includes('car loan') || 
+      descLower.includes('vehicle loan') || 
+      descLower.includes('auto loan')) return 'Loans - Vehicle Loan';
+  if (descLower.includes('education loan') || 
+      descLower.includes('student loan')) return 'Loans - Education Loan';
+  if (descLower.includes('loan') || 
+      descLower.includes('emi') || 
+      descLower.includes('equated')) return 'Loans - Other EMIs';
     
-    return 'Other';
-  }, []);
+  // ========== DAILY EXPENSE CATEGORIES ==========
+  if (descLower.includes('food') || 
+      descLower.includes('swiggy') ||
+      descLower.includes('zomato') || 
+      descLower.includes('restaurant') ||
+      descLower.includes('café') || 
+      descLower.includes('cafe') ||
+      descLower.includes('hotel') ||
+      descLower.includes('bakery') ||
+      descLower.includes('biryani') ||
+      descLower.includes('pizza') ||
+      descLower.includes('mcd') ||
+      descLower.includes('dominos')) return 'Expenses - Food & Dining';
+    
+  if (descLower.includes('amazon') || 
+      descLower.includes('flipkart') ||
+      descLower.includes('myntra') || 
+      descLower.includes('shopping') ||
+      descLower.includes('retail') || 
+      descLower.includes('store') ||
+      descLower.includes('mall') ||
+      descLower.includes('bigbasket') ||
+      descLower.includes('grofers') ||
+      descLower.includes('reliance') ||
+      descLower.includes('dmart')) return 'Expenses - Shopping';
+    
+  if (descLower.includes('movie') || 
+      descLower.includes('entertainment') ||
+      descLower.includes('netflix') || 
+      descLower.includes('prime') ||
+      descLower.includes('hotstar') || 
+      descLower.includes('disney') ||
+      descLower.includes('bookmyshow') ||
+      descLower.includes('pvr') ||
+      descLower.includes('inox') ||
+      descLower.includes('spotify') ||
+      descLower.includes('gaana')) return 'Expenses - Entertainment';
+    
+  if (descLower.includes('uber') || 
+      descLower.includes('ola') ||
+      descLower.includes('transport') || 
+      descLower.includes('petrol') ||
+      descLower.includes('fuel') || 
+      descLower.includes('metro') ||
+      descLower.includes('bus') || 
+      descLower.includes('train') ||
+      descLower.includes('irctc') ||
+      descLower.includes('rapido') ||
+      descLower.includes('yulu')) return 'Expenses - Transportation';
+    
+  if (descLower.includes('medical') || 
+      descLower.includes('hospital') ||
+      descLower.includes('pharmacy') || 
+      descLower.includes('doctor') ||
+      descLower.includes('health') ||
+      descLower.includes('apollo') ||
+      descLower.includes('medplus') ||
+      descLower.includes('netmeds') ||
+      descLower.includes('pharmeasy') ||
+      descLower.includes('clinic')) return 'Expenses - Healthcare';
+    
+  if (descLower.includes('education') || 
+      descLower.includes('school') ||
+      descLower.includes('college') || 
+      descLower.includes('tuition') ||
+      descLower.includes('course') ||
+      descLower.includes('class') ||
+      descLower.includes('coaching') ||
+      descLower.includes('udemy') ||
+      descLower.includes('coursera')) return 'Expenses - Education';
+    
+  if (descLower.includes('utility') || 
+      descLower.includes('bill') ||
+      descLower.includes('electricity') || 
+      descLower.includes('water') ||
+      descLower.includes('gas') || 
+      descLower.includes('internet') ||
+      descLower.includes('phone') || 
+      descLower.includes('mobile') ||
+      descLower.includes('broadband') ||
+      descLower.includes('wifi') ||
+      descLower.includes('bescom') ||
+      descLower.includes('airtel') ||
+      descLower.includes('jio') ||
+      descLower.includes('vi ') ||
+      descLower.includes('bsnl')) return 'Expenses - Utilities';
+    
+  if (descLower.includes('travel') || 
+      descLower.includes('flight') ||
+      descLower.includes('hotel') && !descLower.includes('food') || 
+      descLower.includes('holiday') ||
+      descLower.includes('trip') || 
+      descLower.includes('tour') ||
+      descLower.includes('makemytrip') ||
+      descLower.includes('goibibo') ||
+      descLower.includes('easemytrip') ||
+      descLower.includes('oyo') ||
+      descLower.includes('airbnb')) return 'Expenses - Travel';
+      
+  if (descLower.includes('gift') || 
+      descLower.includes('donation') ||
+      descLower.includes('charity')) return 'Expenses - Gifts & Donations';
+      
+  if (descLower.includes('maintenance') || 
+      descLower.includes('repair') ||
+      descLower.includes('renovation')) return 'Expenses - Home & Maintenance';
+      
+  // ========== TRANSFER CATEGORIES ==========
+  // Check for transaction methods only after checking specific categories
+  if (descLower.includes('upi') && (descLower.includes('payment') || descLower.includes('sent'))) return 'Transfer - UPI Payment';
+  if (descLower.includes('upi') && (descLower.includes('received') || descLower.includes('credit'))) return 'Transfer - UPI Received';
+  if (descLower.includes('imps') || 
+      descLower.includes('neft') || 
+      descLower.includes('rtgs') ||
+      descLower.includes('transfer')) return 'Transfer - Bank Transfer';
+      
+  // ========== CASH WITHDRAWAL CATEGORIES ==========
+  // Check for ATM withdrawals
+  if (descLower.includes('nwd') ||
+      descLower.includes('atm') || 
+      descLower.includes('cash withdrawal') ||
+      descLower.includes('cwl')) {
+    // Categorize by location if available
+    if (descLower.includes('bengaluru') || descLower.includes('bangalore')) return 'Cash Withdrawal - Bangalore';
+    if (descLower.includes('mumbai') || descLower.includes('bombay')) return 'Cash Withdrawal - Mumbai';
+    if (descLower.includes('delhi') || descLower.includes('new delhi')) return 'Cash Withdrawal - Delhi';
+    if (descLower.includes('chennai')) return 'Cash Withdrawal - Chennai';
+    if (descLower.includes('kolkata')) return 'Cash Withdrawal - Kolkata';
+    return 'Cash Withdrawal - ATM';
+  }
+  
+  // ========== TAX CATEGORIES ==========
+  if (descLower.includes('tax') || 
+      descLower.includes('gst') || 
+      descLower.includes('tds') ||
+      descLower.includes('income tax')) return 'Taxes';
+  
+  // ========== FEES & CHARGES CATEGORIES ==========
+  if (descLower.includes('fee') || 
+      descLower.includes('charge') || 
+      descLower.includes('penalty') ||
+      descLower.includes('commission') ||
+      descLower.includes('annual charge') ||
+      descLower.includes('maintenance charge')) return 'Bank Charges & Fees';
+  
+  return 'Other';
+}, []);
 
   // Parse PDF file
   const parsePDF = async (file) => {
@@ -191,446 +411,532 @@ const BankStatementAnalyzer = () => {
       // Split text into lines
       const lines = text.split('\n').map(line => line.trim()).filter(line => line);
 
-      console.log("Extracted PDF lines:", lines.slice(0, 20)); // Debug: show first 20 lines
+      console.log("Extracted PDF lines (first 30):", lines.slice(0, 30)); // Debug: show first 30 lines
+      
+      // Check for Standard Chartered bank statement
+      const isStandardChartered = lines.some(line => 
+        line.includes("standard chartered") || 
+        line.includes("STANDARD CHARTERED") ||
+        (line.includes("Date") && line.includes("Value Date") && line.includes("Description") && 
+         line.includes("Withdrawal") && line.includes("Balance"))
+      );
+      
+      if (isStandardChartered) {
+        console.log("Detected Standard Chartered bank statement format");
+        // Apply specialized Standard Chartered parsing logic
+        const transactions = parseStandardCharteredStatement(lines);
+        
+        if (transactions.length > 0) {
+          console.log(`Successfully extracted ${transactions.length} transactions from Standard Chartered statement`);
+          return transactions;
+        }
+      }
+      
+      // If not Standard Chartered or if the specialized parser failed, continue with regular parsing
+      console.log("Proceeding with generic statement parsing");
+      
+      // Determine if the PDF has a table-like structure
+      const hasTabularStructure = detectTabularStructure(lines);
+      console.log("Detected tabular structure:", hasTabularStructure);
       
       // ENHANCED APPROACH: Apply multiple strategies to detect transactions
+      let transactions = [];
+      
+      // Try all extraction strategies and use the one that finds the most transactions
       
       // Strategy 1: Look for standard transaction patterns with date, description, amounts
-      const transactions = extractTransactionsUsingPatterns(lines);
+      const patternTransactions = extractTransactionsUsingPatterns(lines);
+      console.log(`Found ${patternTransactions.length} transactions using pattern detection`);
       
-      if (transactions.length > 0) {
-        console.log(`Found ${transactions.length} transactions using pattern detection`);
-        return transactions;
+      if (patternTransactions.length > 0) {
+        transactions = patternTransactions;
       }
       
       // Strategy 2: Try table-based extraction (header row + data rows)
       const tableTransactions = extractTransactionsFromTables(lines);
+      console.log(`Found ${tableTransactions.length} transactions using table extraction`);
       
-      if (tableTransactions.length > 0) {
-        console.log(`Found ${tableTransactions.length} transactions using table extraction`);
-        return tableTransactions;
+      if (tableTransactions.length > patternTransactions.length) {
+        transactions = tableTransactions;
       }
       
       // Strategy 3: Line-by-line extraction for less structured formats
       const lineByLineTransactions = extractTransactionsLineByLine(lines);
+      console.log(`Found ${lineByLineTransactions.length} transactions using line-by-line extraction`);
       
-      if (lineByLineTransactions.length > 0) {
-        console.log(`Found ${lineByLineTransactions.length} transactions using line-by-line extraction`);
-        return lineByLineTransactions;
+      if (lineByLineTransactions.length > transactions.length) {
+        transactions = lineByLineTransactions;
       }
       
-      throw new Error("Could not identify transaction data in this PDF format");
+      // Strategy 4: Attempt space-separated column detection
+      const columnTransactions = extractTransactionsFromSpaceSeparatedColumns(lines);
+      console.log(`Found ${columnTransactions.length} transactions using space-separated columns`);
+      
+      if (columnTransactions.length > transactions.length) {
+        transactions = columnTransactions;
+      }
+      
+      // If no transactions were found, attempt one more desperate approach with minimal validation
+      if (transactions.length === 0) {
+        console.log("No transactions found with standard methods. Attempting minimal validation approach.");
+        const minimalTransactions = extractTransactionsWithMinimalValidation(lines);
+        console.log(`Found ${minimalTransactions.length} transactions using minimal validation`);
+        transactions = minimalTransactions;
+      }
+      
+      // If we still couldn't find any transactions, try manual format detection
+      if (transactions.length === 0) {
+        console.log("Trying manual format detection...");
+        
+        // Find lines that look like they might contain dates and amounts
+        const candidateLines = lines.filter(line => {
+          // Check for date-like pattern
+          const hasDate = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/.test(line);
+          // Check for amount-like pattern
+          const hasAmount = /\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/.test(line);
+          return hasDate && hasAmount;
+        });
+        
+        if (candidateLines.length > 0) {
+          console.log("Found candidate lines:", candidateLines.slice(0, 5));
+          
+          // Instead of using browser confirm, throw a special error that can be
+          // handled by the UI if needed
+          if (candidateLines.length > 0) {
+            setError(`Automatic detection failed. Found ${candidateLines.length} potential transaction lines. Try uploading in Excel format instead.`);
+            // Process just the first 20 lines as a best-effort approach
+            const processingLines = candidateLines.slice(0, 20);
+            transactions = processingLines.map(line => {
+              // Extract first date-like pattern
+              const dateMatch = line.match(/\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/);
+              const date = dateMatch ? dateMatch[0] : '';
+              
+              // Extract first amount-like pattern
+              const amountMatch = line.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
+              const amount = amountMatch ? parseFloat(amountMatch[0].replace(/,/g, '')) : 0;
+              
+              // Use the rest as description
+              let description = line;
+              if (dateMatch) description = description.replace(dateMatch[0], '');
+              if (amountMatch) description = description.replace(amountMatch[0], '');
+              description = description.trim();
+              
+              return {
+                date,
+                description,
+                debit: amount > 0 ? amount : 0,
+                credit: 0,
+                category: ''
+              };
+            });
+          }
+        }
+      }
+      
+      if (transactions.length === 0) {
+        // Provide more detailed diagnostic information
+        const sampleText = lines.slice(0, 50).join('\n');
+        console.log("Sample text from PDF:", sampleText);
+        
+        throw new Error(
+          "Could not identify transaction data in this PDF format. " + 
+          "Please check if this is a supported bank statement format or try an Excel/CSV export instead."
+        );
+      }
+      
+      return transactions;
     } catch (error) {
       console.error('PDF parsing error:', error);
       throw new Error(`Error parsing PDF: ${error.message}`);
     }
   };
   
-  // Helper function to extract transactions using pattern detection
-  const extractTransactionsUsingPatterns = (lines) => {
+  // New function to parse Standard Chartered bank statements specifically
+  const parseStandardCharteredStatement = (lines) => {
     const transactions = [];
     
-    // Common date patterns
-    const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
+    console.log("Standard Chartered PDF parsing started, lines:", lines.length);
     
-    // Common amount patterns (handles different formats: 1,234.56 or 1.234,56 or 1234.56)
-    const amountPattern = /\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/g;
-    
-    // Process each line looking for transaction patterns
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // Skip lines that are too short to be transactions
-      if (line.length < 10) continue;
-      
-      // Try to find a date
-      const dateMatch = line.match(datePattern);
-      if (!dateMatch) continue;
-      
-      const date = dateMatch[0];
-      
-      // Get the rest of the line after the date for description and amounts
-      const restOfLine = line.substring(line.indexOf(date) + date.length);
-      
-      // Find all potential amounts in the line
-      const amounts = [];
-      let match;
-      while ((match = amountPattern.exec(restOfLine)) !== null) {
-        // Clean up the amount and convert to number
-        const cleanedAmount = match[0].replace(/,/g, '.');
-        const amount = parseFloat(cleanedAmount);
-        if (!isNaN(amount)) {
-          amounts.push(amount);
-        }
-      }
-      
-      // Reset the regex pattern
-      amountPattern.lastIndex = 0;
-      
-      // If we found at least one amount, create a transaction
-      if (amounts.length > 0) {
-        // Try to determine which is debit and which is credit
-        // For simplicity, we'll assume the largest is the debit and the smallest is the credit
-        // This is a heuristic and might need adjustment based on specific statement formats
-        let debit = 0;
-        let credit = 0;
-        
-        // If we only have one amount, decide based on context clues
-        if (amounts.length === 1) {
-          const lowerLine = line.toLowerCase();
-          if (lowerLine.includes('withdrawal') || lowerLine.includes('debit') || 
-              lowerLine.includes('payment') || lowerLine.includes('dr') || 
-              lowerLine.includes('charge')) {
-            debit = amounts[0];
-          } else if (lowerLine.includes('deposit') || lowerLine.includes('credit') || 
-                   lowerLine.includes('interest') || lowerLine.includes('cr') || 
-                   lowerLine.includes('refund')) {
-            credit = amounts[0];
-          } else {
-            // Default: positive amounts are credits, negative are debits
-            if (amounts[0] < 0) {
-              debit = Math.abs(amounts[0]);
-            } else {
-              credit = amounts[0];
-            }
-          }
-        } else if (amounts.length >= 2) {
-          // If multiple amounts, try to determine which is which
-          // Sort amounts
-          amounts.sort((a, b) => a - b);
-          
-          // Check for explicit markers near the amounts in the line
-          const lineSegments = restOfLine.split(/\s+/);
-          
-          let debitAssigned = false;
-          let creditAssigned = false;
-          
-          for (let j = 0; j < lineSegments.length; j++) {
-            const segment = lineSegments[j].toLowerCase();
-            const nextSegment = j < lineSegments.length - 1 ? lineSegments[j + 1] : '';
-            
-            // Check for explicit debit/credit markers
-            if ((segment.includes('dr') || segment.includes('debit') || 
-                segment.includes('withdrawal')) && !debitAssigned) {
-              // Try to find an amount in this or the next segment
-              const segmentAmount = parseFloat(nextSegment.replace(/[^\d.-]/g, ''));
-              if (!isNaN(segmentAmount)) {
-                debit = segmentAmount;
-                debitAssigned = true;
-              } else {
-                // If no specific amount found, use the last amount
-                debit = amounts[amounts.length - 1];
-                debitAssigned = true;
-              }
-            } else if ((segment.includes('cr') || segment.includes('credit') || 
-                     segment.includes('deposit')) && !creditAssigned) {
-              // Try to find an amount in this or the next segment
-              const segmentAmount = parseFloat(nextSegment.replace(/[^\d.-]/g, ''));
-              if (!isNaN(segmentAmount)) {
-                credit = segmentAmount;
-                creditAssigned = true;
-              } else {
-                // If no specific amount found, use the first amount
-                credit = amounts[0];
-                creditAssigned = true;
-              }
-            }
-          }
-          
-          // If we couldn't assign based on markers, use position-based heuristic
-          if (!debitAssigned && !creditAssigned) {
-            // Default assignment based on position in the line
-            // This is a heuristic and might need adjustment
-            if (amounts.length === 2) {
-              // Two amounts: larger one is usually the balance, the other is the transaction
-              if (Math.abs(amounts[0]) > Math.abs(amounts[1])) {
-                // First amount is larger, treat second as transaction
-                if (amounts[1] < 0) {
-                  debit = Math.abs(amounts[1]);
-                } else {
-                  credit = amounts[1];
-                }
-              } else {
-                // Second amount is larger, treat first as transaction
-                if (amounts[0] < 0) {
-                  debit = Math.abs(amounts[0]);
-                } else {
-                  credit = amounts[0];
-                }
-              }
-            } else {
-              // Three or more amounts, more complex logic needed
-              // This is a simplified approach, might need refinement
-              let debitCandidate = 0;
-              let creditCandidate = 0;
-              
-              for (const amount of amounts) {
-                if (amount < 0 && Math.abs(amount) > debitCandidate) {
-                  debitCandidate = Math.abs(amount);
-                } else if (amount > 0 && amount > creditCandidate) {
-                  creditCandidate = amount;
-                }
-              }
-              
-              debit = debitCandidate;
-              credit = creditCandidate;
-            }
-          }
-        }
-        
-        // Clean up description, removing the date and amounts
-        let description = restOfLine;
-        // Remove all matched amounts from description
-        for (const amount of amounts) {
-          description = description.replace(amount.toString(), '');
-        }
-        // Clean up remaining punctuation and whitespace
-        description = description.replace(/\s+/g, ' ').trim();
-        
-        // Create transaction object if we have valid data
-        if ((debit > 0 || credit > 0) && description) {
-          transactions.push({
-            date,
-            description,
-            debit,
-            credit,
-            category: '' // Will be set later
-          });
-        }
-      }
+    // Debug: Log first 50 lines to understand structure
+    console.log("First 50 lines:");
+    for (let i = 0; i < Math.min(50, lines.length); i++) {
+      console.log(`${i}: ${lines[i]}`);
     }
     
-    return transactions;
-  };
-  
-  // Helper function to extract transactions from tabular data
-  const extractTransactionsFromTables = (lines) => {
-    const transactions = [];
-    
-    // Try to identify a header row that contains column names
-    let headerRow = -1;
-    let dateIndex = -1;
-    let descIndex = -1;
-    let debitIndex = -1;
-    let creditIndex = -1;
-    
-    // Common header terms for each column
-    const dateTerms = ['date', 'txn date', 'transaction date', 'value date'];
-    const descTerms = ['description', 'particulars', 'narration', 'details', 'transaction'];
-    const debitTerms = ['debit', 'withdrawal', 'payment', 'dr', 'paid out', 'amount (dr)'];
-    const creditTerms = ['credit', 'deposit', 'receipt', 'cr', 'paid in', 'amount (cr)'];
-    
-    // Find header row
-    for (let i = 0; i < Math.min(lines.length, 50); i++) {
-      const line = lines[i].toLowerCase();
-      
-      // Check if this line contains header terms
-      const hasDate = dateTerms.some(term => line.includes(term));
-      const hasDesc = descTerms.some(term => line.includes(term));
-      const hasDebit = debitTerms.some(term => line.includes(term));
-      const hasCredit = creditTerms.some(term => line.includes(term));
-      
-      if ((hasDate && hasDesc) && (hasDebit || hasCredit)) {
-        headerRow = i;
-        
-        // Find positions of each column
-        for (const term of dateTerms) {
-          const pos = line.indexOf(term);
-          if (pos >= 0) {
-            dateIndex = pos;
-            break;
-          }
-        }
-        
-        for (const term of descTerms) {
-          const pos = line.indexOf(term);
-          if (pos >= 0) {
-            descIndex = pos;
-            break;
-          }
-        }
-        
-        for (const term of debitTerms) {
-          const pos = line.indexOf(term);
-          if (pos >= 0) {
-            debitIndex = pos;
-            break;
-          }
-        }
-        
-        for (const term of creditTerms) {
-          const pos = line.indexOf(term);
-          if (pos >= 0) {
-            creditIndex = pos;
-            break;
-          }
-        }
-        
+    // Step 1: Find the transaction table header
+    let headerIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Look for the exact table header pattern
+      if (line.includes("Date") && 
+          (line.includes("Value Date") || line.includes("Value")) && 
+          line.includes("Description") && 
+          (line.includes("Cheque") || line.includes("Withdrawal") || line.includes("Deposit"))) {
+        headerIndex = i;
+        console.log("Found table header at line", i, ":", line);
         break;
       }
     }
     
-    // If we found a header row and column positions, extract transactions
-    if (headerRow >= 0 && dateIndex >= 0 && descIndex >= 0 && (debitIndex >= 0 || creditIndex >= 0)) {
-      // Determine column widths and positions
-      const columnOrder = [
-        { name: 'date', pos: dateIndex },
-        { name: 'desc', pos: descIndex },
-        { name: 'debit', pos: debitIndex >= 0 ? debitIndex : Number.MAX_SAFE_INTEGER },
-        { name: 'credit', pos: creditIndex >= 0 ? creditIndex : Number.MAX_SAFE_INTEGER }
-      ].filter(col => col.pos >= 0).sort((a, b) => a.pos - b.pos);
+    if (headerIndex === -1) {
+      console.log("Failed to find transaction table header");
+      return [];
+    }
+    
+    // Step 2: Determine column positions from the header line
+    const headerLine = lines[headerIndex];
+    
+    // Find exact column positions
+    const getColumnPosition = (columnName) => {
+      return headerLine.indexOf(columnName);
+    };
+    
+    // Get positions of each column (using both possible names)
+    const datePos = getColumnPosition("Date");
+    const valueDatePos = Math.max(getColumnPosition("Value Date"), getColumnPosition("Value"));
+    const descPos = getColumnPosition("Description");
+    const chequePos = getColumnPosition("Cheque");
+    const depositPos = getColumnPosition("Deposit");
+    const withdrawalPos = getColumnPosition("Withdrawal");
+    const balancePos = getColumnPosition("Balance");
+    
+    console.log("Column positions:", {
+      datePos,
+      valueDatePos,
+      descPos,
+      chequePos,
+      depositPos,
+      withdrawalPos,
+      balancePos
+    });
+    
+    // Make sure we found the essential columns
+    if (datePos === -1 || descPos === -1 || 
+        (depositPos === -1 && withdrawalPos === -1)) {
+      console.log("Missing essential columns in table header");
+      return [];
+    }
+    
+    // Step 3: Find where the table ends
+    let tableEndIndex = lines.length;
+    
+    // Look for markers that indicate the end of the transaction table
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      if (line.includes("total") || 
+          line.includes("reward points statement") || 
+          line.includes("dear client") || 
+          line.includes("ministry of home affairs") ||
+          line.includes("reward points earned") ||
+          line.includes("opening balance") && line.includes("closing balance")) {
+        tableEndIndex = i;
+        console.log("Found table end at line", i, ":", lines[i]);
+        break;
+      }
+    }
+    
+    console.log(`Processing transaction table from line ${headerIndex + 1} to ${tableEndIndex - 1}`);
+    
+    // Step 4: Extract transactions
+    for (let i = headerIndex + 1; i < tableEndIndex; i++) {
+      const line = lines[i];
+      if (!line || line.trim().length < 10) continue;
       
-      // Process data rows
-      for (let i = headerRow + 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // Skip lines that are too short
-        if (line.length < 10) continue;
-        
-        // Check for date pattern to validate this is a transaction line
-        const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
-        const dateMatch = line.match(datePattern);
-        if (!dateMatch) continue;
-        
-        // Extract fields based on column positions
-        let date = '';
-        let description = '';
-        let debit = 0;
-        let credit = 0;
-        
-        for (let j = 0; j < columnOrder.length; j++) {
-          const col = columnOrder[j];
-          const nextColPos = j < columnOrder.length - 1 ? columnOrder[j + 1].pos : line.length;
-          const fieldText = line.substring(col.pos, nextColPos).trim();
-          
-          if (col.name === 'date') {
-            const dateMatch = fieldText.match(datePattern);
-            if (dateMatch) date = dateMatch[0];
-          } else if (col.name === 'desc') {
-            description = fieldText;
-          } else if (col.name === 'debit') {
-            // Extract amount pattern
-            const amountMatch = fieldText.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
-            if (amountMatch) {
-              const cleanedAmount = amountMatch[0].replace(/,/g, '.');
-              debit = parseFloat(cleanedAmount);
-            }
-          } else if (col.name === 'credit') {
-            // Extract amount pattern
-            const amountMatch = fieldText.match(/\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/);
-            if (amountMatch) {
-              const cleanedAmount = amountMatch[0].replace(/,/g, '.');
-              credit = parseFloat(cleanedAmount);
-            }
-          }
+      // Skip lines that are clearly not transactions
+      if (line.toLowerCase().includes("total") || 
+          line.toLowerCase().includes("balance forward") ||
+          line.toLowerCase().includes("opening balance") ||
+          line.toLowerCase().includes("closing balance")) {
+        continue;
+      }
+      
+      // Verify this line contains a date before processing
+      // Check for common date formats (DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY)
+      const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}\s+[a-zA-Z]{3}\s+\d{4})\b/;
+      const dateMatch = line.match(datePattern);
+      
+      if (!dateMatch) {
+        console.log(`Line ${i} doesn't seem to be a transaction (no date):`, line);
+        continue;
+      }
+      
+      // Extract data from each column based on positions
+      let date = "";
+      let description = "";
+      let deposit = 0;
+      let withdrawal = 0;
+      
+      // Extract date
+      if (datePos >= 0) {
+        // Find the date within the date column area
+        const dateEndPos = valueDatePos > datePos ? valueDatePos : descPos;
+        const dateSection = line.substring(datePos, dateEndPos).trim();
+        const dateMatch = dateSection.match(datePattern);
+        if (dateMatch) {
+          date = dateMatch[0];
         }
-        
-        // Create transaction if we have valid data
-        if (date && (debit > 0 || credit > 0)) {
-          transactions.push({
-            date,
-            description,
-            debit: isNaN(debit) ? 0 : debit,
-            credit: isNaN(credit) ? 0 : credit,
-            category: '' // Will be set later
-          });
+      }
+      
+      // Extract description
+      if (descPos >= 0) {
+        const descEndPos = chequePos > descPos ? chequePos : 
+                          (depositPos > descPos ? depositPos : 
+                           (withdrawalPos > descPos ? withdrawalPos : balancePos));
+        if (descEndPos > descPos) {
+          description = line.substring(descPos, descEndPos).trim();
         }
+      }
+      
+      // Extract deposit amount
+      if (depositPos >= 0) {
+        const depositEndPos = withdrawalPos > depositPos ? withdrawalPos : 
+                             (balancePos > depositPos ? balancePos : line.length);
+        const depositSection = line.substring(depositPos, depositEndPos).trim();
+        const amountMatch = depositSection.match(/\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/);
+        if (amountMatch) {
+          const cleanedAmount = amountMatch[0].replace(/,/g, '');
+          deposit = parseFloat(cleanedAmount);
+        }
+      }
+      
+      // Extract withdrawal amount
+      if (withdrawalPos >= 0) {
+        const withdrawalEndPos = balancePos > withdrawalPos ? balancePos : line.length;
+        const withdrawalSection = line.substring(withdrawalPos, withdrawalEndPos).trim();
+        const amountMatch = withdrawalSection.match(/\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/);
+        if (amountMatch) {
+          const cleanedAmount = amountMatch[0].replace(/,/g, '');
+          withdrawal = parseFloat(cleanedAmount);
+        }
+      }
+      
+      // Add transaction if we have valid data
+      if (date && description && (deposit > 0 || withdrawal > 0)) {
+        console.log(`Found transaction: Date: ${date}, Description: ${description}, Deposit: ${deposit}, Withdrawal: ${withdrawal}`);
+        transactions.push({
+          date,
+          description,
+          debit: withdrawal,
+          credit: deposit,
+          category: '' // Will be set later
+        });
+      } else {
+        console.log(`Skipping invalid/incomplete line ${i}:`, line);
+      }
+    }
+    
+    console.log(`Extracted ${transactions.length} transactions from Standard Chartered statement`);
+    
+    if (transactions.length === 0) {
+      console.log("No transactions found. Showing sample of statement lines:");
+      for (let i = headerIndex; i < Math.min(headerIndex + 10, tableEndIndex); i++) {
+        console.log(`Line ${i}: ${lines[i]}`);
       }
     }
     
     return transactions;
   };
-  
-  // Helper function for line-by-line transaction extraction (last resort)
-  const extractTransactionsLineByLine = (lines) => {
+
+  // Detect if the PDF has a table-like structure
+  const detectTabularStructure = (lines) => {
+    // Look for consistently spaced content which suggests a table
+    let spacingPatterns = 0;
+    
+    // Check a sample of lines for consistent spacing
+    const sampleSize = Math.min(20, lines.length);
+    for (let i = 0; i < sampleSize; i++) {
+      const line = lines[i];
+      // Count space sequences (2+ spaces) that might indicate column separators
+      const spaceSeqs = (line.match(/\s{2,}/g) || []).length;
+      if (spaceSeqs >= 3) {
+        spacingPatterns++;
+      }
+    }
+    
+    // If more than 30% of sampled lines have spacing patterns, it might be tabular
+    return spacingPatterns > (sampleSize * 0.3);
+  };
+
+  // Extract transactions using pattern matching
+  const extractTransactionsUsingPatterns = (lines) => {
     const transactions = [];
+    const datePatterns = [
+      /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/, // DD/MM/YYYY
+      /\b(\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/, // YYYY/MM/DD
+      /\b(\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})\b/  // DD MMM YYYY
+    ];
     
-    // Date patterns
-    const datePattern = /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/;
+    const amountPattern = /\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/;
     
-    // Amount patterns
-    const amountPattern = /\b(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\b/;
-    
-    // Process each line individually
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || line.length < 10) continue;
+      const line = lines[i];
       
       // Check for date
-      const dateMatch = line.match(datePattern);
+      let dateMatch = null;
+      for (const pattern of datePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          dateMatch = match;
+          break;
+        }
+      }
+      
       if (!dateMatch) continue;
       
-      const date = dateMatch[0];
+      // Look for amount patterns
+      const amountMatches = [...line.matchAll(new RegExp(amountPattern, 'g'))];
+      if (amountMatches.length < 1) continue;
       
-      // Look for amounts
-      const amounts = [];
-      let currentLine = line;
-      let amountMatch;
+      // Extract description - everything between date and first amount
+      const dateEndPos = dateMatch.index + dateMatch[0].length;
+      const descriptionEndPos = amountMatches[0].index;
+      let description = '';
       
-      // Find all amounts in the line
-      while ((amountMatch = currentLine.match(amountPattern)) !== null) {
-        const cleanedAmount = amountMatch[0].replace(/,/g, '.');
-        const amount = parseFloat(cleanedAmount);
-        if (!isNaN(amount)) {
-          amounts.push(amount);
-        }
-        // Remove the matched amount to find the next one
-        currentLine = currentLine.replace(amountMatch[0], '');
+      if (descriptionEndPos > dateEndPos) {
+        description = line.substring(dateEndPos, descriptionEndPos).trim();
+      } else {
+        // If amount comes before description, try to find description after
+        description = line.substring(dateEndPos).trim();
       }
       
-      if (amounts.length === 0) continue;
-      
-      // Determine description - everything except date and amounts
-      let description = line;
-      description = description.replace(dateMatch[0], '');
-      for (const amount of amounts) {
-        description = description.replace(amount.toString(), '');
-      }
-      description = description.replace(/\s+/g, ' ').trim();
-      
-      // Determine debit/credit
+      // Try to determine if amount is debit or credit
       let debit = 0;
       let credit = 0;
       
-      // Check for context clues
-      const lowerLine = line.toLowerCase();
-      if (lowerLine.includes('withdrawal') || lowerLine.includes('debit') || 
-          lowerLine.includes('dr') || lowerLine.includes('charge')) {
-        // Likely a debit transaction
-        debit = Math.max(...amounts);
-      } else if (lowerLine.includes('deposit') || lowerLine.includes('credit') || 
-               lowerLine.includes('cr') || lowerLine.includes('interest')) {
-        // Likely a credit transaction
-        credit = Math.max(...amounts);
-      } else if (amounts.length >= 2) {
-        // If we have multiple amounts, check if any are negative
-        const negativeAmounts = amounts.filter(a => a < 0);
-        const positiveAmounts = amounts.filter(a => a > 0);
-        
-        if (negativeAmounts.length > 0) {
-          debit = Math.abs(Math.min(...negativeAmounts));
+      // Simple heuristic - often the last amount is the transaction amount
+      const lastAmount = amountMatches[amountMatches.length - 1];
+      const amountValue = parseFloat(lastAmount[0].replace(/,/g, ''));
+      
+      // If description contains hints of payment/withdrawal, treat as debit
+      if (description.toLowerCase().includes('withdraw') || 
+          description.toLowerCase().includes('payment') ||
+          description.toLowerCase().includes('debit') ||
+          description.toLowerCase().includes('purchase') ||
+          description.toLowerCase().includes('atm') ||
+          description.toLowerCase().includes('upi')) {
+        debit = amountValue;
+      } else if (description.toLowerCase().includes('deposit') || 
+                 description.toLowerCase().includes('credit') ||
+                 description.toLowerCase().includes('salary') ||
+                 description.toLowerCase().includes('interest')) {
+        credit = amountValue;
+      } else {
+        // If no clear indicator, make a best guess
+        // In tabular statements, usually amount position indicates debit/credit
+        if (amountMatches.length >= 2) {
+          debit = parseFloat(amountMatches[0][0].replace(/,/g, ''));
+          credit = parseFloat(amountMatches[1][0].replace(/,/g, ''));
+        } else {
+          // Default case: treat as debit
+          debit = amountValue;
         }
-        if (positiveAmounts.length > 0) {
-          credit = Math.max(...positiveAmounts);
-        }
-        
-        // If still no clear debit/credit, use the first amount as debit (more common)
-        if (debit === 0 && credit === 0 && amounts.length > 0) {
-          debit = amounts[0];
-        }
-      } else if (amounts.length === 1) {
-        // Single amount, assume debit by default
-        debit = amounts[0];
       }
       
-      // Create transaction if we have valid data
+      transactions.push({
+        date: dateMatch[0],
+        description,
+        debit: debit || 0,
+        credit: credit || 0,
+        category: '' // Will be set later
+      });
+    }
+    
+    return transactions;
+  };
+
+  // Extract transactions from table-like structures
+  const extractTransactionsFromTables = (lines) => {
+    const transactions = [];
+    let headerColumns = [];
+    let columns = [];
+    let dateCol = -1;
+    let descCol = -1;
+    let debitCol = -1;
+    let creditCol = -1;
+    let amountCol = -1;
+
+    // Find header row by counting keywords
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      const keywords = ['date', 'description', 'debit', 'credit', 'amount', 'withdrawal', 'deposit'];
+      let keywordCount = 0;
+      
+      keywords.forEach(keyword => {
+        if (line.includes(keyword)) keywordCount++;
+      });
+      
+      if (keywordCount >= 3) {
+        // Found header row
+        headerColumns = line.split(/\s+/).filter(Boolean);
+        
+        // Find column positions
+        headerColumns.forEach((col, index) => {
+          const colLower = col.toLowerCase();
+          if (colLower.includes('date')) dateCol = index;
+          if (colLower.includes('desc') || colLower.includes('narr') || colLower.includes('part')) descCol = index;
+          if (colLower.includes('debit') || colLower.includes('withdrawal') || colLower.includes('dr')) debitCol = index;
+          if (colLower.includes('credit') || colLower.includes('deposit') || colLower.includes('cr')) creditCol = index;
+          if (colLower.includes('amount')) amountCol = index;
+        });
+        
+        break;
+      }
+    }
+
+    // Process data rows
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      columns = line.split(/\s+/).filter(Boolean);
+      if (columns.length < 3) continue;
+      
+      let date = columns[dateCol];
+      let description = columns[descCol];
+      let debit = 0;
+      let credit = 0;
+      
+      // Handle amount column if present
+      if (amountCol !== -1) {
+        const amount = parseFloat(columns[amountCol].replace(/[,₹]/g, '')) || 0;
+        
+        // Determine if debit or credit based on:
+        // 1. Column header (if it indicates DR/CR)
+        // 2. Description text (e.g., "UPI" usually means debit)
+        // 3. Default to debit if can't determine
+        const isDebit = 
+          (headerColumns[amountCol]?.toLowerCase().includes('dr') || 
+           headerColumns[amountCol]?.toLowerCase().includes('debit') ||
+           headerColumns[amountCol]?.toLowerCase().includes('withdrawal')) ||
+          (!headerColumns[amountCol]?.toLowerCase().includes('cr') && 
+           !headerColumns[amountCol]?.toLowerCase().includes('credit') &&
+           !headerColumns[amountCol]?.toLowerCase().includes('deposit') &&
+           (description.toLowerCase().includes('upi') || 
+            description.toLowerCase().includes('withdrawal') ||
+            description.toLowerCase().includes('debit')));
+        
+        if (isDebit) {
+          debit = amount;
+        } else {
+          credit = amount;
+        }
+      } else {
+        // Separate debit/credit columns
+        if (debitCol !== -1) {
+          debit = parseFloat(columns[debitCol].replace(/[,₹]/g, '')) || 0;
+        }
+        if (creditCol !== -1) {
+          credit = parseFloat(columns[creditCol].replace(/[,₹]/g, '')) || 0;
+        }
+      }
+      
+      // Only add if we have valid data
       if (date && description && (debit > 0 || credit > 0)) {
         transactions.push({
           date,
           description,
-          debit: isNaN(debit) ? 0 : debit,
-          credit: isNaN(credit) ? 0 : credit,
+          debit,
+          credit,
           category: '' // Will be set later
         });
       }
@@ -639,494 +945,597 @@ const BankStatementAnalyzer = () => {
     return transactions;
   };
 
-  // Process Excel Data
-  const processExcelData = (rawData) => {
-    // Find header row
-    let headerRow = -1;
-    for (let i = 0; i < Math.min(rawData.length, 100); i++) {
-      const row = rawData[i].map(cell => String(cell).toLowerCase());
-      const hasDate = row.some(cell => cell.includes('date'));
-      const hasDebit = row.some(cell => cell.includes('withdrawal') || cell.includes('debit') || cell.includes('dr'));
-      const hasCredit = row.some(cell => cell.includes('deposit') || cell.includes('credit') || cell.includes('cr'));
+  // Extract transactions line by line
+  const extractTransactionsLineByLine = (lines) => {
+    const transactions = [];
+    const datePatterns = [
+      /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/, // DD/MM/YYYY
+      /\b(\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/, // YYYY/MM/DD
+      /\b(\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})\b/  // DD MMM YYYY
+    ];
+    
+    const amountPattern = /\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/;
+    
+    let currentTransaction = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       
-      if (hasDate && (hasDebit || hasCredit)) {
+      // Check for date
+      let dateMatch = null;
+      for (const pattern of datePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          dateMatch = match;
+          break;
+        }
+      }
+      
+      if (dateMatch) {
+        // Start a new transaction
+        if (currentTransaction) {
+          transactions.push(currentTransaction);
+        }
+        currentTransaction = {
+          date: dateMatch[0],
+          description: '',
+          debit: 0,
+          credit: 0,
+          category: '' // Will be set later
+        };
+      }
+      
+      if (currentTransaction) {
+        // Append to description
+        currentTransaction.description += ' ' + line;
+        
+        // Look for amount patterns
+        const amountMatches = [...line.matchAll(new RegExp(amountPattern, 'g'))];
+        if (amountMatches.length > 0) {
+          // Try to determine if amount is debit or credit
+          const amountValue = parseFloat(amountMatches[0][0].replace(/,/g, ''));
+          
+          // If description contains hints of payment/withdrawal, treat as debit
+          if (currentTransaction.description.toLowerCase().includes('withdraw') || 
+              currentTransaction.description.toLowerCase().includes('payment') ||
+              currentTransaction.description.toLowerCase().includes('debit') ||
+              currentTransaction.description.toLowerCase().includes('purchase') ||
+              currentTransaction.description.toLowerCase().includes('atm') ||
+              currentTransaction.description.toLowerCase().includes('upi')) {
+            currentTransaction.debit = amountValue;
+          } else if (currentTransaction.description.toLowerCase().includes('deposit') || 
+                     currentTransaction.description.toLowerCase().includes('credit') ||
+                     currentTransaction.description.toLowerCase().includes('salary') ||
+                     currentTransaction.description.toLowerCase().includes('interest')) {
+            currentTransaction.credit = amountValue;
+          } else {
+            // If no clear indicator, make a best guess
+            // In line-by-line statements, usually the first amount is debit
+            if (currentTransaction.debit === 0) {
+              currentTransaction.debit = amountValue;
+            } else {
+              currentTransaction.credit = amountValue;
+            }
+          }
+        }
+      }
+    }
+    
+    // Add the last transaction
+    if (currentTransaction) {
+      transactions.push(currentTransaction);
+    }
+    
+    return transactions;
+  };
+
+  // Extract transactions from space-separated columns
+  const extractTransactionsFromSpaceSeparatedColumns = (lines) => {
+    const transactions = [];
+    const datePatterns = [
+      /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/, // DD/MM/YYYY
+      /\b(\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/, // YYYY/MM/DD
+      /\b(\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})\b/  // DD MMM YYYY
+    ];
+    
+    const amountPattern = /\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check for date
+      let dateMatch = null;
+      for (const pattern of datePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          dateMatch = match;
+          break;
+        }
+      }
+      
+      if (!dateMatch) continue;
+      
+      // Look for amount patterns
+      const amountMatches = [...line.matchAll(new RegExp(amountPattern, 'g'))];
+      if (amountMatches.length < 1) continue;
+      
+      // Extract description - everything between date and first amount
+      const dateEndPos = dateMatch.index + dateMatch[0].length;
+      const descriptionEndPos = amountMatches[0].index;
+      let description = '';
+      
+      if (descriptionEndPos > dateEndPos) {
+        description = line.substring(dateEndPos, descriptionEndPos).trim();
+      } else {
+        // If amount comes before description, try to find description after
+        description = line.substring(dateEndPos).trim();
+      }
+      
+      // Try to determine if amount is debit or credit
+      let debit = 0;
+      let credit = 0;
+      
+      // Simple heuristic - often the last amount is the transaction amount
+      const lastAmount = amountMatches[amountMatches.length - 1];
+      const amountValue = parseFloat(lastAmount[0].replace(/,/g, ''));
+      
+      // If description contains hints of payment/withdrawal, treat as debit
+      if (description.toLowerCase().includes('withdraw') || 
+          description.toLowerCase().includes('payment') ||
+          description.toLowerCase().includes('debit') ||
+          description.toLowerCase().includes('purchase') ||
+          description.toLowerCase().includes('atm') ||
+          description.toLowerCase().includes('upi')) {
+        debit = amountValue;
+      } else if (description.toLowerCase().includes('deposit') || 
+                 description.toLowerCase().includes('credit') ||
+                 description.toLowerCase().includes('salary') ||
+                 description.toLowerCase().includes('interest')) {
+        credit = amountValue;
+      } else {
+        // If no clear indicator, make a best guess
+        // In space-separated columns, usually the first amount is debit
+        if (amountMatches.length >= 2) {
+          debit = parseFloat(amountMatches[0][0].replace(/,/g, ''));
+          credit = parseFloat(amountMatches[1][0].replace(/,/g, ''));
+        } else {
+          // Default case: treat as debit
+          debit = amountValue;
+        }
+      }
+      
+      transactions.push({
+        date: dateMatch[0],
+        description,
+        debit: debit || 0,
+        credit: credit || 0,
+        category: '' // Will be set later
+      });
+    }
+    
+    return transactions;
+  };
+
+  // Extract transactions with minimal validation
+  const extractTransactionsWithMinimalValidation = (lines) => {
+    const transactions = [];
+    const datePatterns = [
+      /\b(\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})\b/, // DD/MM/YYYY
+      /\b(\d{2,4}[-/.]\d{1,2}[-/.]\d{1,2})\b/, // YYYY/MM/DD
+      /\b(\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})\b/  // DD MMM YYYY
+    ];
+    
+    const amountPattern = /\b(\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{0,2})?)\b/;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check for date
+      let dateMatch = null;
+      for (const pattern of datePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          dateMatch = match;
+          break;
+        }
+      }
+      
+      if (!dateMatch) continue;
+      
+      // Look for amount patterns
+      const amountMatches = [...line.matchAll(new RegExp(amountPattern, 'g'))];
+      if (amountMatches.length < 1) continue;
+      
+      // Extract description - everything between date and first amount
+      const dateEndPos = dateMatch.index + dateMatch[0].length;
+      const descriptionEndPos = amountMatches[0].index;
+      let description = '';
+      
+      if (descriptionEndPos > dateEndPos) {
+        description = line.substring(dateEndPos, descriptionEndPos).trim();
+      } else {
+        // If amount comes before description, try to find description after
+        description = line.substring(dateEndPos).trim();
+      }
+      
+      // Try to determine if amount is debit or credit
+      let debit = 0;
+      let credit = 0;
+      
+      // Simple heuristic - often the last amount is the transaction amount
+      const lastAmount = amountMatches[amountMatches.length - 1];
+      const amountValue = parseFloat(lastAmount[0].replace(/,/g, ''));
+      
+      // If description contains hints of payment/withdrawal, treat as debit
+      if (description.toLowerCase().includes('withdraw') || 
+          description.toLowerCase().includes('payment') ||
+          description.toLowerCase().includes('debit') ||
+          description.toLowerCase().includes('purchase') ||
+          description.toLowerCase().includes('atm') ||
+          description.toLowerCase().includes('upi')) {
+        debit = amountValue;
+      } else if (description.toLowerCase().includes('deposit') || 
+                 description.toLowerCase().includes('credit') ||
+                 description.toLowerCase().includes('salary') ||
+                 description.toLowerCase().includes('interest')) {
+        credit = amountValue;
+      } else {
+        // If no clear indicator, make a best guess
+        // In minimal validation, usually the first amount is debit
+        if (amountMatches.length >= 2) {
+          debit = parseFloat(amountMatches[0][0].replace(/,/g, ''));
+          credit = parseFloat(amountMatches[1][0].replace(/,/g, ''));
+        } else {
+          // Default case: treat as debit
+          debit = amountValue;
+        }
+      }
+      
+      transactions.push({
+        date: dateMatch[0],
+        description,
+        debit: debit || 0,
+        credit: credit || 0,
+        category: '' // Will be set later
+      });
+    }
+    
+    return transactions;
+  };
+
+  // Process transactions from CSV data
+  const processTransactions = (data) => {
+    return data.map(row => ({
+      date: row.Date || row.date || row.TransactionDate || row.TRANSACTION_DATE,
+      description: row.Description || row.description || row.Narration || row.NARRATION || row.Particulars || row.PARTICULARS,
+      debit: parseFloat(row.Debit || row.debit || row.Withdrawal || row.WITHDRAWAL || row.DR || '0') || 0,
+      credit: parseFloat(row.Credit || row.credit || row.Deposit || row.DEPOSIT || row.CR || '0') || 0,
+      category: '' // Will be set later
+    })).filter(transaction => 
+      transaction.date && 
+      (transaction.debit > 0 || transaction.credit > 0) &&
+      transaction.description
+    );
+  };
+
+  // Process data from Excel file
+  const processExcelData = (data) => {
+    // Skip empty rows and find header row
+    let headerRow = -1;
+    const headerKeywords = ['date', 'description', 'narration', 'particulars', 'debit', 'credit', 'withdrawal', 'deposit'];
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i].map(cell => String(cell).toLowerCase());
+      let keywordCount = 0;
+      
+      for (const keyword of headerKeywords) {
+        if (row.some(cell => cell.includes(keyword))) {
+          keywordCount++;
+        }
+      }
+      
+      if (keywordCount >= 3) {
         headerRow = i;
         break;
       }
     }
     
-    if (headerRow < 0) {
-      throw new Error("Could not identify transaction headers in the statement");
+    if (headerRow === -1) {
+      throw new Error('Could not find header row in Excel file');
     }
     
-    const headers = rawData[headerRow];
-    
-    // Find column indices
-    const dateIdx = headers.findIndex(h => String(h).toLowerCase().includes('date'));
-    const descIdx = headers.findIndex(h => 
-      String(h).toLowerCase().includes('description') || 
-      String(h).toLowerCase().includes('particulars') || 
-      String(h).toLowerCase().includes('narration')
-    );
-    const debitIdx = headers.findIndex(h => 
-      String(h).toLowerCase().includes('withdrawal') || 
-      String(h).toLowerCase().includes('debit') || 
-      String(h).toLowerCase().includes('dr')
-    );
-    const creditIdx = headers.findIndex(h => 
-      String(h).toLowerCase().includes('deposit') || 
-      String(h).toLowerCase().includes('credit') || 
-      String(h).toLowerCase().includes('cr')
-    );
-    const balanceIdx = headers.findIndex(h => String(h).toLowerCase().includes('balance'));
-    
-    if (dateIdx < 0 || descIdx < 0 || (debitIdx < 0 && creditIdx < 0)) {
-      throw new Error("Could not identify required columns (date, description, debit/credit)");
-    }
+    // Map header columns to standardized names
+    const headers = data[headerRow].map(header => String(header).toLowerCase());
+    const columnMap = {
+      date: headers.findIndex(header => 
+        header.includes('date') || header.includes('txn date') || header.includes('transaction date')
+      ),
+      description: headers.findIndex(header => 
+        header.includes('description') || header.includes('narration') || header.includes('particulars')
+      ),
+      debit: headers.findIndex(header => 
+        header.includes('debit') || header.includes('withdrawal') || header.includes('dr')
+      ),
+      credit: headers.findIndex(header => 
+        header.includes('credit') || header.includes('deposit') || header.includes('cr')
+      )
+    };
     
     // Extract transactions
     const transactions = [];
-    for (let i = headerRow + 1; i < rawData.length; i++) {
-      const row = rawData[i];
-      
-      // Skip rows that don't have enough data
-      if (!row[dateIdx] || row.length < Math.max(dateIdx, descIdx, debitIdx, creditIdx)) {
-        continue;
-      }
-      
-      // Try to validate date
-      let dateStr = String(row[dateIdx]);
-      let isValidDate = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/.test(dateStr) || 
-                      row[dateIdx] instanceof Date;
-      
-      if (!isValidDate) continue;
+    
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
       
       const transaction = {
-        date: row[dateIdx],
-        description: row[descIdx] || '',
-        debit: 0,
-        credit: 0,
-        balance: balanceIdx >= 0 ? row[balanceIdx] : '',
-        category: ''
+        date: row[columnMap.date],
+        description: row[columnMap.description],
+        debit: parseFloat(row[columnMap.debit] || '0') || 0,
+        credit: parseFloat(row[columnMap.credit] || '0') || 0,
+        category: '' // Will be set later
       };
       
-      // Parse debit and credit amounts
-      if (debitIdx >= 0 && row[debitIdx]) {
-        try {
-          // Clean up the amount string and convert to number
-          const debitStr = String(row[debitIdx]).replace(/[^\d.-]/g, '');
-          transaction.debit = debitStr ? parseFloat(debitStr) : 0;
-        } catch (e) {
-          transaction.debit = 0;
-        }
-      }
-      
-      if (creditIdx >= 0 && row[creditIdx]) {
-        try {
-          // Clean up the amount string and convert to number
-          const creditStr = String(row[creditIdx]).replace(/[^\d.-]/g, '');
-          transaction.credit = creditStr ? parseFloat(creditStr) : 0;
-        } catch (e) {
-          transaction.credit = 0;
-        }
-      }
-      
-      // Only add if it has at least one valid amount
-      if (transaction.debit > 0 || transaction.credit > 0) {
+      // Only add if we have valid data
+      if (transaction.date && 
+          transaction.description && 
+          (transaction.debit > 0 || transaction.credit > 0)) {
         transactions.push(transaction);
       }
     }
     
-    if (transactions.length === 0) {
-      throw new Error("No valid transactions found in the statement");
-    }
-    
-    return transactions; // Return the transactions instead of calling processTransactions directly
+    return transactions;
   };
 
-  // Analyze bank statement
-  const analyzeStatement = async () => {
-    if (!file) {
-      setError('Please select a file to analyze');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    
-    try {
-      const fileExt = fileName.split('.').pop().toLowerCase();
-      let transactions;
-      
-      if (fileExt === 'pdf') {
-        transactions = await parsePDF(file);
-        processTransactions(transactions);
-      } else {
-        const fileReader = new FileReader();
-        
-        fileReader.onload = function(event) {
-          try {
-            let parsedTransactions;
-            
-            if (fileExt === 'csv') {
-              // Handle CSV files
-              const csvText = event.target.result;
-              const parsedData = Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                dynamicTyping: true
-              });
-              
-              if (parsedData.errors.length > 0) {
-                throw new Error(`CSV parsing error: ${parsedData.errors[0].message}`);
-              }
-              
-              parsedTransactions = parsedData.data.map(row => ({
-                date: row.Date || row.date || row.txn_date || '',
-                description: row.Description || row.description || row.particulars || row.narration || '',
-                debit: parseFloat(row.Debit || row.debit || row.withdrawal || row.dr || 0) || 0,
-                credit: parseFloat(row.Credit || row.credit || row.deposit || row.cr || 0) || 0,
-                balance: row.Balance || row.balance || '',
-                category: '' // Will be set later
-              })).filter(t => t.date && (t.debit > 0 || t.credit > 0));
-            } else {
-              // Handle Excel files
-              const data = new Uint8Array(event.target.result);
-              const workbook = XLSX.read(data, {
-                cellStyles: true,
-                cellFormulas: true,
-                cellDates: true,
-                cellNF: true,
-                sheetStubs: true
-              });
-              
-              const sheetName = workbook.SheetNames[0];
-              const sheet = workbook.Sheets[sheetName];
-              const rawData = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: ''});
-              parsedTransactions = processExcelData(rawData);
-            }
-            
-            if (parsedTransactions && parsedTransactions.length > 0) {
-              processTransactions(parsedTransactions);
-            } else {
-              throw new Error("No valid transactions found");
-            }
-          } catch (err) {
-            console.error(err);
-            setError(`Error analyzing statement: ${err.message}`);
-            setLoading(false);
-          }
-        };
-        
-        fileReader.onerror = function() {
-          setError('Error reading file');
-          setLoading(false);
-        };
-        
-        if (fileExt === 'csv') {
-          fileReader.readAsText(file);
-        } else {
-          fileReader.readAsArrayBuffer(file);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setError(`Error analyzing statement: ${err.message}`);
-      setLoading(false);
-    }
-  };
-  
-  // Process transactions for analysis
-  const processTransactions = (transactions) => {
-    // Categorize transactions
-    transactions.forEach(t => {
-      t.category = extractCategory(t.description);
+  // Analyze transactions and generate insights
+  const analyzeTransactions = (transactions) => {
+    // Add categories to transactions
+    transactions.forEach(transaction => {
+      transaction.category = extractCategory(transaction.description, transaction.credit - transaction.debit);
     });
     
-    // 1. Total income and expenses
+    // Calculate totals
     const totalIncome = transactions.reduce((sum, t) => sum + t.credit, 0);
     const totalExpenses = transactions.reduce((sum, t) => sum + t.debit, 0);
     const netSavings = totalIncome - totalExpenses;
     const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
     
-    // 2. Monthly breakdown
-    const monthlyData = {};
+    // Get top expenses and income
+    const topExpenses = [...transactions]
+      .filter(t => t.debit > 0)
+      .sort((a, b) => b.debit - a.debit)
+      .slice(0, 10);
     
-    transactions.forEach(t => {
-      let date;
-      if (t.date instanceof Date) {
-        date = t.date;
-      } else {
-        // Try to parse the date string (handle various formats)
-        try {
-          // First try direct parsing
-          date = new Date(t.date);
-          
-          // If that fails, try DD/MM/YYYY format
-          if (isNaN(date.getTime())) {
-            const dateParts = String(t.date).split(/[\/-]/);
-            if (dateParts.length === 3) {
-              const day = parseInt(dateParts[0]);
-              const month = parseInt(dateParts[1]) - 1; // JS months are 0-based
-              let year = parseInt(dateParts[2]);
-              if (year < 100) year += 2000; // Fix 2-digit years
-              date = new Date(year, month, day);
-            }
-          }
-        } catch (e) {
-          // If parsing fails, skip this transaction for monthly analysis
-          return;
-        }
-      }
-      
-      if (date && !isNaN(date.getTime())) {
-        const yearMonth = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        const monthName = new Date(date.getFullYear(), date.getMonth(), 1).toLocaleString('default', { month: 'short' }) + " '" + (date.getFullYear().toString().slice(-2));
-        
-        if (!monthlyData[yearMonth]) {
-          monthlyData[yearMonth] = {
-            month: monthName,
-            income: 0,
-            expenses: 0,
-            transactions: 0
-          };
-        }
-        
-        monthlyData[yearMonth].income += t.credit;
-        monthlyData[yearMonth].expenses += t.debit;
-        monthlyData[yearMonth].transactions++;
-      }
-    });
+    const topIncome = [...transactions]
+      .filter(t => t.credit > 0)
+      .sort((a, b) => b.credit - a.credit)
+      .slice(0, 10);
     
-    // Sort months and calculate additional metrics
-    const sortedMonths = Object.keys(monthlyData).sort();
-    const monthlyAnalysis = sortedMonths.map(month => ({
-      month: monthlyData[month].month,
-      rawMonth: month,
-      income: monthlyData[month].income,
-      expenses: monthlyData[month].expenses,
-      savings: monthlyData[month].income - monthlyData[month].expenses,
-      savingsRate: (monthlyData[month].income > 0) ? 
-        ((monthlyData[month].income - monthlyData[month].expenses) / monthlyData[month].income) * 100 : 0,
-      transactions: monthlyData[month].transactions
-    }));
-    
-    // 3. Category analysis
+    // Category analysis
     const categorySpending = {};
     const categoryIncome = {};
     
     transactions.forEach(t => {
-      const category = t.category;
-      
-      // Initialize categories if needed
-      if (!categorySpending[category]) categorySpending[category] = 0;
-      if (!categoryIncome[category]) categoryIncome[category] = 0;
-      
-      // Add to category totals
-      if (t.debit > 0) categorySpending[category] += t.debit;
-      if (t.credit > 0) categoryIncome[category] += t.credit;
+      if (t.debit > 0) {
+        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.debit;
+      }
+      if (t.credit > 0) {
+        categoryIncome[t.category] = (categoryIncome[t.category] || 0) + t.credit;
+      }
     });
     
-    // Convert to arrays for charts
     const categorySpendingArray = Object.entries(categorySpending)
       .map(([name, value]) => ({ name, value }))
-      .filter(item => item.value > 0)
       .sort((a, b) => b.value - a.value);
-      
+    
     const categoryIncomeArray = Object.entries(categoryIncome)
       .map(([name, value]) => ({ name, value }))
-      .filter(item => item.value > 0)
       .sort((a, b) => b.value - a.value);
     
-    // 4. Day of week analysis
-    const dayOfWeekSpending = {
-      'Sunday': 0,
-      'Monday': 0,
-      'Tuesday': 0,
-      'Wednesday': 0,
-      'Thursday': 0,
-      'Friday': 0,
-      'Saturday': 0
-    };
-    
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    // Monthly analysis
+    const monthlyData = {};
     
     transactions.forEach(t => {
-      if (t.debit > 0) {
-        let date;
-        try {
-          // Try direct Date parsing
-          date = new Date(t.date);
-          
-          // If invalid, try DD/MM/YYYY format
-          if (isNaN(date.getTime())) {
-            const dateParts = String(t.date).split(/[\/-]/);
-            if (dateParts.length === 3) {
-              const day = parseInt(dateParts[0]);
-              const month = parseInt(dateParts[1]) - 1;
-              let year = parseInt(dateParts[2]);
-              if (year < 100) year += 2000;
-              date = new Date(year, month, day);
-            }
-          }
-        } catch (e) {
-          return;
-        }
-        
-        if (date && !isNaN(date.getTime())) {
-          const dayOfWeek = dayNames[date.getDay()];
-          dayOfWeekSpending[dayOfWeek] += t.debit;
-        }
+      const date = new Date(t.date);
+      const month = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          month,
+          income: 0,
+          expenses: 0,
+          transactions: 0
+        };
       }
+      
+      monthlyData[month].income += t.credit;
+      monthlyData[month].expenses += t.debit;
+      monthlyData[month].transactions++;
     });
     
-    // Convert to array for chart
-    const dayOfWeekArray = Object.entries(dayOfWeekSpending)
-      .map(([name, value]) => ({ name, value }));
+    const monthlyAnalysis = Object.values(monthlyData).map(month => ({
+      ...month,
+      savings: month.income - month.expenses,
+      savingsRate: month.income > 0 ? ((month.income - month.expenses) / month.income) * 100 : 0
+    }));
     
-    // 5. Recurring transactions
-    const recurringPatterns = {};
+    // Day of week analysis
+    const dayOfWeek = {};
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
     transactions.forEach(t => {
-      // Simplify description to find patterns
-      const simpleDesc = String(t.description)
-        .replace(/\d+/g, '')
-        .replace(/[\/\-\.]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
-      
-      if (simpleDesc.length > 3) {
-        if (!recurringPatterns[simpleDesc]) {
-          recurringPatterns[simpleDesc] = {
-            count: 0,
-            totalDebit: 0,
-            totalCredit: 0,
-            originalDescription: t.description
-          };
-        }
-        
-        recurringPatterns[simpleDesc].count++;
-        recurringPatterns[simpleDesc].totalDebit += t.debit;
-        recurringPatterns[simpleDesc].totalCredit += t.credit;
-      }
+      const date = new Date(t.date);
+      const day = days[date.getDay()];
+      dayOfWeek[day] = (dayOfWeek[day] || 0) + t.debit;
     });
     
-    // Filter for patterns that occur multiple times
-    const potentialRecurring = Object.entries(recurringPatterns)
-      .filter(([desc, data]) => data.count > 1)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 10)
-      .map(([desc, data]) => ({
-        description: data.originalDescription,
-        occurrences: data.count,
-        avgDebit: data.totalDebit > 0 ? data.totalDebit / data.count : 0,
-        avgCredit: data.totalCredit > 0 ? data.totalCredit / data.count : 0,
-        type: data.totalDebit > data.totalCredit ? 'expense' : 'income'
-      }));
+    const dayOfWeekArray = days.map(day => ({
+      name: day,
+      value: dayOfWeek[day] || 0
+    }));
     
-    // 6. Top transactions
-    const topExpenses = transactions
-      .filter(t => t.debit > 0)
-      .sort((a, b) => b.debit - a.debit)
-      .slice(0, 5);
+    // Find recurring transactions
+    const transactionPatterns = {};
+    
+    transactions.forEach(t => {
+      const key = `${t.description}-${t.debit > 0 ? 'expense' : 'income'}`;
+      if (!transactionPatterns[key]) {
+        transactionPatterns[key] = {
+          description: t.description,
+          type: t.debit > 0 ? 'expense' : 'income',
+          occurrences: 0,
+          totalDebit: 0,
+          totalCredit: 0
+        };
+      }
       
-    const topIncome = transactions
-      .filter(t => t.credit > 0)
-      .sort((a, b) => b.credit - a.credit)
-      .slice(0, 5);
+      transactionPatterns[key].occurrences++;
+      transactionPatterns[key].totalDebit += t.debit;
+      transactionPatterns[key].totalCredit += t.credit;
+    });
     
-    // 7. Calculate insights
+    const potentialRecurring = Object.values(transactionPatterns)
+      .filter(p => p.occurrences >= 2)
+      .map(p => ({
+        ...p,
+        avgDebit: p.totalDebit / p.occurrences,
+        avgCredit: p.totalCredit / p.occurrences
+      }))
+      .sort((a, b) => b.occurrences - a.occurrences);
+    
+    // Generate insights
     const insights = [];
     
     // Savings rate insight
-    if (savingsRate < 10) {
-      insights.push({
-        type: 'warning',
-        text: `Your savings rate is only ${savingsRate.toFixed(1)}%. Consider aiming for at least 20% for long-term financial health.`
-      });
-    } else if (savingsRate >= 20) {
+    if (savingsRate > 20) {
       insights.push({
         type: 'positive',
         text: `Great job! Your savings rate of ${savingsRate.toFixed(1)}% is above the recommended 20%.`
       });
-    }
-    
-    // Monthly variation insights
-    const monthsWithNegativeSavings = monthlyAnalysis.filter(m => m.savings < 0);
-    if (monthsWithNegativeSavings.length > 0) {
-      insights.push({
-        type: 'warning',
-        text: `You had negative savings in ${monthsWithNegativeSavings.length} months. Consider building an emergency fund to cover high-expense months.`
-      });
-    }
-    
-    // Best and worst months
-    const bestMonth = _.maxBy(monthlyAnalysis, 'savingsRate');
-    const worstMonth = _.minBy(monthlyAnalysis, 'savingsRate');
-    
-    if (bestMonth) {
-      insights.push({
-        type: 'positive',
-        text: `Your best month was ${bestMonth.month} with a savings rate of ${bestMonth.savingsRate.toFixed(1)}%.`
-      });
-    }
-    
-    if (worstMonth && worstMonth.savingsRate < 0) {
-      insights.push({
-        type: 'warning',
-        text: `Your most challenging month was ${worstMonth.month} with a savings rate of ${worstMonth.savingsRate.toFixed(1)}%.`
-      });
-    }
-    
-    // Weekend spending insight
-    const weekdaySpending = dayOfWeekSpending.Monday + dayOfWeekSpending.Tuesday + 
-                          dayOfWeekSpending.Wednesday + dayOfWeekSpending.Thursday + 
-                          dayOfWeekSpending.Friday;
-    const weekendSpending = dayOfWeekSpending.Saturday + dayOfWeekSpending.Sunday;
-    const avgWeekdaySpending = weekdaySpending / 5;
-    const avgWeekendSpending = weekendSpending / 2;
-    
-    if (avgWeekendSpending > avgWeekdaySpending * 1.5) {
+    } else if (savingsRate > 0) {
       insights.push({
         type: 'info',
-        text: `Your weekend spending is ${(avgWeekendSpending / avgWeekdaySpending).toFixed(1)}x higher than weekdays. Consider setting a weekend budget.`
+        text: `Your savings rate is ${savingsRate.toFixed(1)}%. Try to increase it to at least 20%.`
+      });
+    } else {
+      insights.push({
+        type: 'warning',
+        text: 'Your expenses exceed your income. Consider creating a budget to manage spending.'
       });
     }
     
-    // Investment insight
-    const investmentPercentage = (categorySpending.Investments || 0) / totalExpenses * 100;
-    if (investmentPercentage < 10) {
+    // Category insights
+    const topExpenseCategory = categorySpendingArray[0];
+    if (topExpenseCategory) {
+      insights.push({
+        type: 'info',
+        text: `Your highest spending category is ${topExpenseCategory.name} at ${formatCurrency(topExpenseCategory.value)}.`
+      });
+    }
+    
+    // Recurring payment insights
+    if (potentialRecurring.length > 0) {
+      const recurringExpenses = potentialRecurring.filter(p => p.type === 'expense');
+      const totalRecurring = recurringExpenses.reduce((sum, p) => sum + p.avgDebit, 0);
+      
+      insights.push({
+        type: 'info',
+        text: `You have ${recurringExpenses.length} recurring expenses totaling approximately ${formatCurrency(totalRecurring)} per month.`
+      });
+    }
+    
+    // Monthly trend insights
+    if (monthlyAnalysis.length >= 2) {
+      const lastMonth = monthlyAnalysis[monthlyAnalysis.length - 1];
+      const previousMonth = monthlyAnalysis[monthlyAnalysis.length - 2];
+      
+      if (lastMonth.expenses > previousMonth.expenses) {
+        insights.push({
+          type: 'warning',
+          text: `Your expenses increased by ${formatCurrency(lastMonth.expenses - previousMonth.expenses)} compared to last month.`
+        });
+      } else {
+        insights.push({
+          type: 'positive',
+          text: `Your expenses decreased by ${formatCurrency(previousMonth.expenses - lastMonth.expenses)} compared to last month.`
+        });
+      }
+    }
+    
+    // Add suggestions
+    insights.push({
+      type: 'suggestion',
+      text: 'Consider setting up automatic transfers to a savings account to maintain consistent savings.'
+    });
+    
+    if (dayOfWeekArray.some(d => d.value > totalExpenses * 0.2)) {
       insights.push({
         type: 'suggestion',
-        text: `Only ${investmentPercentage.toFixed(1)}% of your expenses are investments. Consider increasing this to 15-20% for long-term growth.`
+        text: 'Your spending varies significantly by day of the week. Planning purchases could help distribute expenses more evenly.'
       });
     }
     
-    // Set analysis results
-    setAnalysisResults({
-      transactions,
+    return {
       totalIncome,
       totalExpenses,
       netSavings,
       savingsRate,
-      monthlyAnalysis,
-      categorySpendingArray,
-      categoryIncomeArray,
-      dayOfWeekArray,
-      potentialRecurring,
       topExpenses,
       topIncome,
+      categorySpendingArray,
+      categoryIncomeArray,
+      monthlyAnalysis,
+      dayOfWeekArray,
+      potentialRecurring,
       insights
-    });
+    };
+  };
+
+  // Handle file analysis
+  const analyzeStatement = async () => {
+    if (!file) return;
     
-    setLoading(false);
+    setLoading(true);
+    setError('');
+    
+    try {
+      let transactions = [];
+      
+      // Determine file type and process accordingly
+      if (file.name.toLowerCase().endsWith('.pdf')) {
+        transactions = await parsePDF(file);
+      } else if (file.name.toLowerCase().endsWith('.csv')) {
+        const text = await file.text();
+        const result = Papa.parse(text, { header: true });
+        transactions = processTransactions(result.data);
+      } else if (file.name.toLowerCase().endsWith('.xls') || file.name.toLowerCase().endsWith('.xlsx')) {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer);
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        transactions = processExcelData(data);
+      } else {
+        throw new Error('Unsupported file format. Please upload a PDF, CSV, or Excel file.');
+      }
+      
+      // Analyze transactions
+      const results = analyzeTransactions(transactions);
+      setAnalysisResults(results);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setError(error.message || 'Error analyzing statement. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 relative">
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2072&q=80')] bg-cover bg-center opacity-10 animate-pulse-slow"></div>
+      
+      {/* Futuristic Circuit Pattern Overlay */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cGF0aCBkPSJNMSAxaDR2NEgxem00IDBoNHY0SDV6bTI0IDBo-NGg0djRoLTR6bTQgMGg0djRoLTR6bTEyIDBoNHY0aC00ek0xIDVoNHY0SDF6bTggMGg0djRIOXptOCAwaDR2NEgxN3ptMTIgMGg0djRoLTR6bTggMGg0djRoLTR6TTEgOWg0djRIMXptOCAwaDR2NEg5em00IDBoNHY0aC00em00IDBoNHY0aC00em0xMiAwaDR2NGgtNHptOCAwaDR2NGgtNHpNMSAxM2g0djRIMXptNCAwaDR2NEg1em0yNCAwaDR2NGgtNHptMTYgMGg0djRoLTR6TTEgMTdoNHY0SDV6TTEgMTdoNHY0SDV6bTI0IDBoNHY0aC00em0xNiAwaDR2NGgtNHpNMSAyMWg0djRIMXptOCAwaDR2NEg5em00IDBoNHY0aC00em0xMiAwaDR2NGgtNHptMTIgMGg0djRoLTR6TTEgMjVoNHY0SDV6bTggMGg0djRoLTR6bTggMGg0djRoLTR6bTggMGg0djRoLTR6bTExIDBoNHY0aC00ek0xIDI5aDR2NEgxem00IDBoNHY0SDV6bTggMGg0djRoLTR6bTEyIDBoNHY0aC00em0xMiAwaDR2NGgtNHpNMSAzM2g0djRIMXptOCAwaDR2NEg5em00IDBoNHY0aC00em00IDBoNHY0aC00em04IDBoNHY0aC00ek0xIDM3aDR2NEgxem04IDBoNHY0SDl6bTggMGg0djRoLTR6bTggMGg0djRoLTR6bTQgMGg0djRoLTR6TTEgNDFoNHY0SDF6bTQgMGg0djRINXptOCAwaDR2NGgtNHptNCAwaDR2NGgtNHptOCAwaDR2NGgtNHptMTIgMGg0djRoLTR6TTEgNDVoNHY0SDV6bTggMGg0djRIOXptMTIgMGg0djRoLTR6bTQgMGg0djRoLTR6bTggMGg0djRoLTR6Ij48L3BhdGg+PC9zdmc+')] opacity-5"></div>
       
       {/* Content Container */}
       <motion.div 
@@ -1139,63 +1548,232 @@ const BankStatementAnalyzer = () => {
           className="text-4xl font-bold mb-6 text-center text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 animate-gradient"
           variants={itemVariants}
         >
-          Pixel Wealth
+          <div className="flex justify-center items-center">
+            <svg width="280" height="70" viewBox="0 0 280 70" className="filter drop-shadow-xl">
+              {/* Glowing background effect */}
+              <defs>
+                <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4facfe" />
+                  <stop offset="100%" stopColor="#00f2fe" />
+                </linearGradient>
+                <linearGradient id="pixelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#43e97b" />
+                  <stop offset="100%" stopColor="#38f9d7" />
+                </linearGradient>
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="neon" x="-20%" y="-20%" width="140%" height="140%">
+                  <feFlood floodColor="#4facfe" floodOpacity="0.7" result="flood" />
+                  <feComposite in="flood" in2="SourceGraphic" operator="in" result="mask" />
+                  <feGaussianBlur in="mask" stdDeviation="1" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+              
+              {/* Pixel Art Money Bag */}
+              <g filter="url(#glow)" className="animate-pulse-slow">
+                {/* Pixel Money Bag */}
+                <rect x="20" y="18" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="18" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="32" y="18" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="38" y="18" width="6" height="6" fill="url(#pixelGradient)" />
+                
+                <rect x="14" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="20" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="32" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="38" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="44" y="24" width="6" height="6" fill="url(#pixelGradient)" />
+                
+                <rect x="14" y="30" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="20" y="30" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="30" width="6" height="6" fill="url(#logoGradient)" />
+                <rect x="32" y="30" width="6" height="6" fill="url(#logoGradient)" />
+                <rect x="38" y="30" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="44" y="30" width="6" height="6" fill="url(#pixelGradient)" />
+                
+                <rect x="14" y="36" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="20" y="36" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="36" width="6" height="6" fill="url(#logoGradient)" />
+                <rect x="32" y="36" width="6" height="6" fill="url(#logoGradient)" />
+                <rect x="38" y="36" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="44" y="36" width="6" height="6" fill="url(#pixelGradient)" />
+                
+                <rect x="14" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="20" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="32" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="38" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="44" y="42" width="6" height="6" fill="url(#pixelGradient)" />
+                
+                <rect x="20" y="48" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="26" y="48" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="32" y="48" width="6" height="6" fill="url(#pixelGradient)" />
+                <rect x="38" y="48" width="6" height="6" fill="url(#pixelGradient)" />
+              </g>
+              
+              {/* Pixel Text for "PIXEL" */}
+              <g filter="url(#glow)">
+                {/* P */}
+                <rect x="60" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="65" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="70" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="60" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="75" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="60" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="65" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="70" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="60" y="35" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="60" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="60" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                
+                {/* I */}
+                <rect x="85" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="85" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="85" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="85" y="35" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="85" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="85" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                
+                {/* X */}
+                <rect x="95" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="115" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="100" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="110" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="105" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="105" y="35" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="100" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="110" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="95" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="115" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                
+                {/* E */}
+                <rect x="125" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="130" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="135" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="140" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="125" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="125" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="130" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="135" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="125" y="35" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="125" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="125" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="130" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="135" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="140" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                
+                {/* L */}
+                <rect x="150" y="20" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="150" y="25" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="150" y="30" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="150" y="35" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="150" y="40" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="150" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="155" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="160" y="45" width="5" height="5" fill="url(#logoGradient)" />
+                <rect x="165" y="45" width="5" height="5" fill="url(#logoGradient)" />
+              </g>
+              
+              {/* WEALTH text */}
+              <text x="180" y="40" fontFamily="Courier New" fontSize="24" fontWeight="bold" fill="white" filter="url(#glow)">
+                WEALTH
+              </text>
+              
+              {/* Pixel dollar sign symbols */}
+              <g className="animate-ping-slow">
+                <rect x="12" y="16" width="3" height="3" fill="#4facfe" opacity="0.7" />
+                <rect x="54" y="52" width="3" height="3" fill="#4facfe" opacity="0.7" />
+                <rect x="170" y="20" width="3" height="3" fill="#4facfe" opacity="0.7" />
+              </g>
+            </svg>
+          </div>
         </motion.h1>
         <PrivacyNotice />
 
         {/* File Upload Section */}
         <motion.div 
-          className="mb-8 p-6 bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300"
+          className="mb-8 p-6 bg-white/10 backdrop-blur-lg rounded-lg shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 relative overflow-hidden"
           variants={itemVariants}
         >
-          <h2 className="text-xl font-semibold mb-4 text-white">Upload Your Bank Statement</h2>
-          <p className="text-white/70 text-sm mb-4 bg-yellow-500/20 p-2 rounded-md border border-yellow-500/30">
-            <strong>Note:</strong> Currently optimized for HDFC Bank statements in XLS format only. Other formats may not parse correctly.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex-grow">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-white/30 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-105">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg className="w-8 h-8 mb-4 text-white/70 animate-bounce" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="mb-2 text-sm text-white/70">
-                    <span className="font-semibold">Click to upload</span> or drag and drop
-                  </p>
-                  <p className="text-xs text-white/50">XLS, XLSX, CSV, or PDF</p>
-                  {fileName && <p className="mt-2 text-sm font-medium text-blue-400 animate-fade-in">{fileName}</p>}
-                </div>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".xls,.xlsx,.csv,.pdf" 
-                  onChange={handleFileChange}
-                />
-              </label>
-            </div>
-            <motion.button 
-              onClick={analyzeStatement}
-              disabled={loading || !file}
-              className={`px-6 py-3 rounded-lg font-medium text-white transition-all duration-300 ${
-                !file 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 shadow-lg hover:shadow-xl'
-              }`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Analyzing...
+          {/* Glowing border effect */}
+          <div className="absolute inset-0 rounded-lg" style={{ 
+            background: 'linear-gradient(45deg, rgba(79, 172, 254, 0.4), rgba(0, 242, 254, 0.4))',
+            filter: 'blur(8px)',
+            opacity: 0.3,
+            animation: 'pulse-slow 4s infinite'
+          }}></div>
+          
+          <div className="relative">
+            <h2 className="text-xl font-semibold mb-4 text-white">Upload Your Bank Statement</h2>
+            <p className="text-white/70 text-sm mb-4 bg-yellow-500/20 p-2 rounded-md border border-yellow-500/30">
+              <strong>Note:</strong> Currently optimized for HDFC Bank statements in XLS format only. Other formats may not parse correctly.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex-grow">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-white/30 border-dashed rounded-lg cursor-pointer bg-white/5 hover:bg-white/10 transition-all duration-300 hover:scale-105">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg className="w-8 h-8 mb-4 text-white/70 animate-bounce" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="mb-2 text-sm text-white/70">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-white/50">XLS, XLSX, CSV, or PDF</p>
+                    {fileName && <p className="mt-2 text-sm font-medium text-blue-400 animate-fade-in">{fileName}</p>}
+                  </div>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept=".xls,.xlsx,.csv,.pdf" 
+                    onChange={handleFileChange}
+                  />
+                </label>
+              </div>
+              <motion.button 
+                onClick={analyzeStatement}
+                disabled={loading || !file}
+                className={`px-6 py-3 rounded-lg font-medium text-white transition-all duration-300 relative overflow-hidden ${
+                  !file 
+                    ? 'bg-gray-600 cursor-not-allowed' 
+                    : 'bg-transparent border border-blue-400 hover:border-purple-400'
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {/* Futuristic button background */}
+                {file && !loading && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/80 to-purple-500/80 z-0" 
+                    style={{ 
+                      backgroundSize: "200% 200%",
+                      animation: "gradient-shift 3s linear infinite"
+                    }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Analyze Statement
+                    </>
+                  )}
                 </span>
-              ) : 'Analyze Statement'}
-            </motion.button>
+              </motion.button>
+            </div>
+            {error && <motion.p className="mt-4 text-red-400" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.p>}
           </div>
-          {error && <motion.p className="mt-4 text-red-400" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{error}</motion.p>}
         </motion.div>
         
         {/* Analysis Results Section */}

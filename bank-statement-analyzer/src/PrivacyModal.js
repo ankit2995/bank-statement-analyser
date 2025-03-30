@@ -23,7 +23,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
           <div className="space-y-6">
             <section>
               <h3 className="text-xl font-semibold text-blue-700 mb-2">Data Privacy</h3>
-              <p className="mb-2">Bank Statement Analyzer prioritizes your privacy and security:</p>
+              <p className="mb-2">Pixel Wealth prioritizes your privacy and security:</p>
               <ul className="list-disc ml-6 space-y-1">
                 <li>Your bank statement is processed <strong>entirely within your browser</strong></li>
                 <li>No data is ever sent to our servers or any third parties</li>
@@ -52,7 +52,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
               <p className="mb-2">Please be aware of the following important information:</p>
               <ul className="list-disc ml-6 space-y-1">
                 <li>This tool is provided "as is" without warranty of any kind</li>
-                <li>Bank Statement Analyzer is not affiliated with any financial institution</li>
+                <li>Pixel Wealth is not affiliated with any financial institution</li>
                 <li>The analysis results should not be the sole basis for financial decisions</li>
                 <li>This tool is not a substitute for professional financial advice</li>
                 <li>Always verify the analysis results against your original statements</li>
