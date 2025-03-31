@@ -11,7 +11,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 import PrivacyModal from './PrivacyModal';
 import { getAnalytics, logEvent } from "firebase/analytics";
-
+import PrivacyNotice from './PrivacyNotice';
 // Configure PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -75,6 +75,7 @@ const getCategoryIcon = (category) => {
 
   return matchedCategory ? categoryIcons[matchedCategory] : fallbackIcon;
 };
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDqgRf6rgOlZ1DBsCl9wbKmfV6mueEvcVI",
@@ -387,6 +388,7 @@ const BankStatementAnalyzer = () => {
 
   // Extract category from description
   // Extract category from description with enhanced financial intelligence
+// Enhanced category extraction function with more detailed patterns
 const extractCategory = useCallback((description, amount) => {
   if (!description) return 'Uncategorized';
   
@@ -395,94 +397,259 @@ const extractCategory = useCallback((description, amount) => {
   
   // ========== INCOME CATEGORIES ==========
   if (isCredit) {
-    // Salary and income
+    // Salary and income - expanded patterns
     if (descLower.includes('salary') || 
         descLower.includes('sal ') || 
         descLower.includes('income') || 
         descLower.includes('stipend') ||
         descLower.includes('commission') ||
-        descLower.includes('bonus')) return 'Income - Salary';
+        descLower.includes('bonus') ||
+        descLower.includes('pension') ||
+        descLower.includes('paytm') ||
+        descLower.includes('payment received') ||
+        descLower.includes('credit/') ||
+        descLower.includes('payroll') ||
+        descLower.includes('compensation') ||
+        descLower.includes('wage') ||
+        descLower.includes('earnings') ||
+        /cr\/[^\/]*sal/i.test(descLower)) return 'Income - Salary';
     
-    // Rental income
-    if (descLower.includes('rent') && isCredit) return 'Income - Rental';
+    // Rental income - expanded
+    if ((descLower.includes('rent') && isCredit) ||
+        descLower.includes('lease payment') ||
+        descLower.includes('tenant')) return 'Income - Rental';
     
-    // Interest income
-    if ((descLower.includes('interest') || descLower.includes('int cr')) && isCredit) return 'Income - Interest';
+    // Interest income - expanded
+    if ((descLower.includes('interest') || 
+         descLower.includes('int cr') ||
+         descLower.includes('intt') ||
+         descLower.includes('int.cr') ||
+         descLower.includes('savings interest') ||
+         descLower.includes('fd interest')) && isCredit) return 'Income - Interest';
     
-    // Refunds
+    // Refunds and cashbacks - expanded
     if (descLower.includes('refund') || 
         descLower.includes('cashback') || 
-        descLower.includes('reversal')) return 'Income - Refunds';
+        descLower.includes('reversal') ||
+        descLower.includes('reimbursement') ||
+        descLower.includes('return') ||
+        descLower.includes('chargeback') ||
+        descLower.includes('repayment to you') ||
+        descLower.includes('money back')) return 'Income - Refunds';
+    
+    // Dividends and investments returns
+    if (descLower.includes('dividend') ||
+        descLower.includes('investment return') ||
+        descLower.includes('capital gain') ||
+        (descLower.includes('return') && descLower.includes('investment'))) return 'Income - Dividends';
+        
+    // Gifts and transfers received
+    if ((descLower.includes('gift') || 
+         descLower.includes('transfer from') ||
+         descLower.includes('imps from') ||
+         descLower.includes('neft from') ||
+         descLower.includes('upi/') ||
+         descLower.includes('received from ')) && isCredit) return 'Income - Gifts & Transfers';
   }
   
   // ========== INVESTMENT CATEGORIES ==========
-  // Specific investment categories based on user feedback
-  if (descLower.includes('gullak') || descLower.includes('gullakmoney')) return 'Investments - Digital Gold';
-  if (descLower.includes('jar') || descLower.includes('jarmoney')) return 'Investments - Digital Gold';
-  if (descLower.includes('wintwealth') || descLower.includes('wintwealth')) return 'Investments - Bonds';
+  // Digital Gold and Silver
+  if (descLower.includes('gullak') || 
+      descLower.includes('gullakmoney') ||
+      descLower.includes('jar') || 
+      descLower.includes('jarmoney') ||
+      descLower.includes('mmtc') ||
+      descLower.includes('augmont') ||
+      descLower.includes('digital gold')) return 'Investments - Digital Gold';
 
+  // Bonds and Debt Instruments
+  if (descLower.includes('wintwealth') || 
+      descLower.includes('winvest') ||
+      descLower.includes('bond purchase') ||
+      descLower.includes('bonds') ||
+      descLower.includes('debenture') ||
+      descLower.includes('fixed maturity plan') ||
+      descLower.includes('debt fund') ||
+      descLower.includes('ncds')) return 'Investments - Bonds';
+
+  // Direct Stocks
   if (descLower.includes('zerodha') || 
       descLower.includes('groww') || 
       descLower.includes('upstox') ||
       descLower.includes('icici direct') ||
-      descLower.includes('angel broking')) return 'Investments - Direct Stocks';
+      descLower.includes('angel broking') ||
+      descLower.includes('sharekhan') ||
+      descLower.includes('geojit') ||
+      descLower.includes('iifl') ||
+      descLower.includes('motilal oswal') ||
+      descLower.includes('5paisa') ||
+      descLower.includes('indiabulls') ||
+      descLower.includes('stock purchase') ||
+      descLower.includes('equity delivery') ||
+      descLower.includes('hdfc sec') ||
+      descLower.includes('kotak securities') ||
+      descLower.includes('axis direct')) return 'Investments - Direct Stocks';
+  
+  // Mutual Funds - expanded patterns
   if (descLower.includes('bse limited') || 
       (descLower.includes('bse') && descLower.includes('tsez')) ||
       descLower.includes('kfintech') ||
       descLower.includes('cams') ||
-      descLower.includes('sip')) return 'Investments - Mutual Funds';
+      descLower.includes('sip') ||
+      descLower.includes('mutual fund') ||
+      descLower.includes('mf ') ||
+      descLower.includes('systematic investment') ||
+      descLower.includes('aditya birla sun life') ||
+      descLower.includes('axis mutual') ||
+      descLower.includes('idfc mutual') ||
+      descLower.includes('dsp') ||
+      descLower.includes('icici prudential') ||
+      descLower.includes('kotak mahindra mutual') ||
+      descLower.includes('uti mutual') ||
+      descLower.includes('sbi mutual') ||
+      descLower.includes('hdfc mutual') ||
+      descLower.includes('nippon mutual') ||
+      descLower.includes('franklin templeton') ||
+      descLower.includes('mirae asset') ||
+      descLower.includes('tata mutual')) return 'Investments - Mutual Funds';
+  
+  // Fixed Deposits - expanded patterns
   if ((descLower.includes('northeast') && descLower.includes('small') && descLower.includes('fin')) ||
       descLower.includes('fd ') || 
       descLower.includes('fixed deposit') ||
-      descLower.includes('deposit opening')) return 'Investments - Fixed Deposit';
+      descLower.includes('deposit opening') ||
+      descLower.includes('term deposit') ||
+      descLower.includes('fd renewal') ||
+      descLower.includes('fixed dep') ||
+      descLower.includes('deposit booked') ||
+      descLower.includes('deposit placement')) return 'Investments - Fixed Deposit';
+  
+  // Retirement Investments - expanded
   if (descLower.includes('ppf') || 
       descLower.includes('nps') || 
-      descLower.includes('epf')) return 'Investments - Retirement';
+      descLower.includes('epf') ||
+      descLower.includes('provident fund') ||
+      descLower.includes('pension fund') ||
+      descLower.includes('retirement') ||
+      descLower.includes('annuity') ||
+      descLower.includes('pf contribution') ||
+      descLower.includes('employees provident') ||
+      descLower.includes('superannuation')) return 'Investments - Retirement';
+  
+  // Precious Metals - expanded
   if (descLower.includes('gold') || 
       descLower.includes('silver') ||
-      descLower.includes('bullion')) return 'Investments - Precious Metals';
+      descLower.includes('bullion') ||
+      descLower.includes('precious metal') ||
+      descLower.includes('sovereign gold bond') ||
+      descLower.includes('sgb')) return 'Investments - Precious Metals';
+  
+  // Cryptocurrency - expanded
   if (descLower.includes('crypto') || 
       descLower.includes('bitcoin') || 
       descLower.includes('ethereum') || 
       descLower.includes('wazirx') ||
-      descLower.includes('coindcx')) return 'Investments - Cryptocurrency';
+      descLower.includes('coindcx') ||
+      descLower.includes('coinswitch') ||
+      descLower.includes('zebpay') ||
+      descLower.includes('binance') ||
+      descLower.includes('tether') ||
+      descLower.includes('dogecoin') ||
+      descLower.includes('btc') ||
+      descLower.includes('eth') ||
+      descLower.includes('usdt')) return 'Investments - Cryptocurrency';
     
-  // General investments
+  // General investments - more patterns
   if (descLower.includes('invest') || 
       descLower.includes('dividend') ||
-      descLower.includes('mutua') ||
+      descLower.includes('mutual') ||
       descLower.includes('stock') ||
-      descLower.includes('shares')) return 'Investments - General';
+      descLower.includes('shares') ||
+      descLower.includes('securities') ||
+      descLower.includes('broker') ||
+      descLower.includes('portfolio')) return 'Investments - General';
+  
+  // P2P Lending
+  if (descLower.includes('lendbox') || 
+      descLower.includes('lendenclub') ||
+      descLower.includes('liquiloans') ||
+      descLower.includes('grip invest') ||
+      descLower.includes('p2p lending') ||
+      descLower.includes('peer to peer lend')) return 'Investments - P2P Lending';
   
   // ========== INSURANCE CATEGORIES ==========
   if (descLower.includes('life insurance') || 
       descLower.includes('lic') || 
-      descLower.includes('hdfc life')) return 'Insurance - Life';
+      descLower.includes('hdfc life') ||
+      descLower.includes('sbi life') ||
+      descLower.includes('icici prulife') ||
+      descLower.includes('max life') ||
+      descLower.includes('pnb metlife') ||
+      descLower.includes('term insurance') ||
+      descLower.includes('bajaj allianz life')) return 'Insurance - Life';
+  
   if (descLower.includes('health insurance') || 
       descLower.includes('star health') || 
       descLower.includes('apollo') ||
-      descLower.includes('max bupa')) return 'Insurance - Health';
+      descLower.includes('max bupa') ||
+      descLower.includes('aditya birla health') ||
+      descLower.includes('hdfc ergo health') ||
+      descLower.includes('icici lombard health') ||
+      descLower.includes('niva bupa') ||
+      descLower.includes('care health')) return 'Insurance - Health';
+  
   if (descLower.includes('car insurance') || 
       descLower.includes('vehicle insurance') || 
-      descLower.includes('two wheeler')) return 'Insurance - Vehicle';
+      descLower.includes('two wheeler') ||
+      descLower.includes('motor insurance') ||
+      descLower.includes('bike insurance') ||
+      descLower.includes('acko') ||
+      descLower.includes('digit insurance') ||
+      descLower.includes('bajaj allianz general') ||
+      descLower.includes('tata aig motor')) return 'Insurance - Vehicle';
+  
   if (descLower.includes('insurance') || 
-      descLower.includes('policy')) return 'Insurance - General';
+      descLower.includes('policy') ||
+      descLower.includes('premium payment')) return 'Insurance - General';
   
   // ========== LOAN CATEGORIES ==========
   if (descLower.includes('home loan') || 
-      descLower.includes('mortgage')) return 'Loans - Home Loan';
+      descLower.includes('mortgage') ||
+      descLower.includes('housing finance') ||
+      descLower.includes('housing loan') ||
+      descLower.includes('property loan')) return 'Loans - Home Loan';
+  
   if (descLower.includes('personal loan') || 
-      descLower.includes('pl emi')) return 'Loans - Personal Loan';
+      descLower.includes('pl emi') ||
+      descLower.includes('consumer loan') ||
+      descLower.includes('bajaj finserv') ||
+      descLower.includes('moneyview') ||
+      descLower.includes('earlysal') ||
+      descLower.includes('early salary') ||
+      descLower.includes('hdfc pl')) return 'Loans - Personal Loan';
+  
   if (descLower.includes('car loan') || 
       descLower.includes('vehicle loan') || 
-      descLower.includes('auto loan')) return 'Loans - Vehicle Loan';
+      descLower.includes('auto loan') ||
+      descLower.includes('two wheeler loan') ||
+      descLower.includes('bike loan') ||
+      descLower.includes('cholamandalam') ||
+      descLower.includes('hdfc auto')) return 'Loans - Vehicle Loan';
+  
   if (descLower.includes('education loan') || 
-      descLower.includes('student loan')) return 'Loans - Education Loan';
+      descLower.includes('student loan') ||
+      descLower.includes('study loan') ||
+      descLower.includes('credila') ||
+      descLower.includes('vidya lakshmi')) return 'Loans - Education Loan';
+  
   if (descLower.includes('loan') || 
       descLower.includes('emi') || 
-      descLower.includes('equated')) return 'Loans - Other EMIs';
+      descLower.includes('equated') ||
+      descLower.includes('installment') ||
+      descLower.includes('repayment')) return 'Loans - Other EMIs';
     
   // ========== DAILY EXPENSE CATEGORIES ==========
+  // Food & Dining - expanded with popular food apps and restaurants
   if (descLower.includes('food') || 
       descLower.includes('swiggy') ||
       descLower.includes('zomato') || 
@@ -494,8 +661,23 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('biryani') ||
       descLower.includes('pizza') ||
       descLower.includes('mcd') ||
-      descLower.includes('dominos')) return 'Expenses - Food & Dining';
+      descLower.includes('mcdonalds') ||
+      descLower.includes('kfc') ||
+      descLower.includes('dominos') ||
+      descLower.includes('subway') ||
+      descLower.includes('starbucks') ||
+      descLower.includes('burger king') ||
+      descLower.includes('dunkin') ||
+      descLower.includes('costa coffee') ||
+      descLower.includes('chai point') ||
+      descLower.includes('fasoos') ||
+      descLower.includes('eatfit') ||
+      descLower.includes('freshmenu') ||
+      descLower.includes('eatsure') ||
+      descLower.includes('lunchbox') ||
+      descLower.includes('dining')) return 'Expenses - Food & Dining';
     
+  // Shopping - expanded with popular online and offline retailers
   if (descLower.includes('amazon') || 
       descLower.includes('flipkart') ||
       descLower.includes('myntra') || 
@@ -505,9 +687,22 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('mall') ||
       descLower.includes('bigbasket') ||
       descLower.includes('grofers') ||
+      descLower.includes('blinkit') ||
       descLower.includes('reliance') ||
-      descLower.includes('dmart')) return 'Expenses - Shopping';
+      descLower.includes('dmart') ||
+      descLower.includes('ajio') ||
+      descLower.includes('nykaa') ||
+      descLower.includes('tata cliq') ||
+      descLower.includes('meesho') ||
+      descLower.includes('snapdeal') ||
+      descLower.includes('lifestyle') ||
+      descLower.includes('shoppers stop') ||
+      descLower.includes('westside') ||
+      descLower.includes('lenskart') ||
+      descLower.includes('ikea') ||
+      descLower.includes('decathlon')) return 'Expenses - Shopping';
     
+  // Entertainment - expanded with streaming platforms and activities
   if (descLower.includes('movie') || 
       descLower.includes('entertainment') ||
       descLower.includes('netflix') || 
@@ -518,8 +713,24 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('pvr') ||
       descLower.includes('inox') ||
       descLower.includes('spotify') ||
-      descLower.includes('gaana')) return 'Expenses - Entertainment';
+      descLower.includes('gaana') ||
+      descLower.includes('wynk') ||
+      descLower.includes('zee5') ||
+      descLower.includes('sony liv') ||
+      descLower.includes('voot') ||
+      descLower.includes('jiocinema') ||
+      descLower.includes('apple tv') ||
+      descLower.includes('youtube premium') ||
+      descLower.includes('gaming') ||
+      descLower.includes('playstation') ||
+      descLower.includes('xbox') ||
+      descLower.includes('steam') ||
+      descLower.includes('epic games') ||
+      descLower.includes('concert') ||
+      descLower.includes('theatre') ||
+      descLower.includes('amusement park')) return 'Expenses - Entertainment';
     
+  // Transportation - expanded with ride-sharing and fuel
   if (descLower.includes('uber') || 
       descLower.includes('ola') ||
       descLower.includes('transport') || 
@@ -530,8 +741,25 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('train') ||
       descLower.includes('irctc') ||
       descLower.includes('rapido') ||
-      descLower.includes('yulu')) return 'Expenses - Transportation';
+      descLower.includes('yulu') ||
+      descLower.includes('cab') ||
+      descLower.includes('taxi') ||
+      descLower.includes('auto') ||
+      descLower.includes('hp') ||
+      descLower.includes('indian oil') ||
+      descLower.includes('iocl') ||
+      descLower.includes('bharat petroleum') ||
+      descLower.includes('bpcl') ||
+      descLower.includes('hindustan petroleum') ||
+      descLower.includes('hpcl') ||
+      descLower.includes('namma metro') ||
+      descLower.includes('dmrc') ||
+      descLower.includes('best bus') ||
+      descLower.includes('tsrtc') ||
+      descLower.includes('ksrtc') ||
+      descLower.includes('apsrtc')) return 'Expenses - Transportation';
     
+  // Healthcare - expanded with pharmacies and hospitals
   if (descLower.includes('medical') || 
       descLower.includes('hospital') ||
       descLower.includes('pharmacy') || 
@@ -541,8 +769,25 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('medplus') ||
       descLower.includes('netmeds') ||
       descLower.includes('pharmeasy') ||
-      descLower.includes('clinic')) return 'Expenses - Healthcare';
+      descLower.includes('clinic') ||
+      descLower.includes('1mg') ||
+      descLower.includes('wellness') ||
+      descLower.includes('diagnostic') ||
+      descLower.includes('lab test') ||
+      descLower.includes('medlife') ||
+      descLower.includes('dentist') ||
+      descLower.includes('physiotherapy') ||
+      descLower.includes('tata 1mg') ||
+      descLower.includes('fortis') ||
+      descLower.includes('max healthcare') ||
+      descLower.includes('manipal') ||
+      descLower.includes('aiims') ||
+      descLower.includes('cipla') ||
+      descLower.includes('metropolis') ||
+      descLower.includes('thyrocare') ||
+      descLower.includes('lal path')) return 'Expenses - Healthcare';
     
+  // Education - expanded with ed-tech platforms
   if (descLower.includes('education') || 
       descLower.includes('school') ||
       descLower.includes('college') || 
@@ -551,8 +796,22 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('class') ||
       descLower.includes('coaching') ||
       descLower.includes('udemy') ||
-      descLower.includes('coursera')) return 'Expenses - Education';
+      descLower.includes('coursera') ||
+      descLower.includes('byjus') ||
+      descLower.includes('upgrad') ||
+      descLower.includes('unacademy') ||
+      descLower.includes('vedantu') ||
+      descLower.includes('great learning') ||
+      descLower.includes('simplilearn') ||
+      descLower.includes('whitehat') ||
+      descLower.includes('university') ||
+      descLower.includes('institute') ||
+      descLower.includes('academy') ||
+      descLower.includes('lecture') ||
+      descLower.includes('exam fee') ||
+      descLower.includes('books')) return 'Expenses - Education';
     
+  // Utilities - expanded with ISPs and mobile carriers
   if (descLower.includes('utility') || 
       descLower.includes('bill') ||
       descLower.includes('electricity') || 
@@ -567,11 +826,28 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('airtel') ||
       descLower.includes('jio') ||
       descLower.includes('vi ') ||
-      descLower.includes('bsnl')) return 'Expenses - Utilities';
+      descLower.includes('vodafone') ||
+      descLower.includes('idea') ||
+      descLower.includes('bsnl') ||
+      descLower.includes('mtnl') ||
+      descLower.includes('tata power') ||
+      descLower.includes('adani electricity') ||
+      descLower.includes('reliance energy') ||
+      descLower.includes('torrent power') ||
+      descLower.includes('mahanagar gas') ||
+      descLower.includes('indraprastha gas') ||
+      descLower.includes('act fiber') ||
+      descLower.includes('excitel') ||
+      descLower.includes('hathway') ||
+      descLower.includes('tikona') ||
+      descLower.includes('tata sky') ||
+      descLower.includes('dish tv') ||
+      descLower.includes('d2h')) return 'Expenses - Utilities';
     
+  // Travel - expanded with OTAs and hotels
   if (descLower.includes('travel') || 
       descLower.includes('flight') ||
-      descLower.includes('hotel') && !descLower.includes('food') || 
+      (descLower.includes('hotel') && !descLower.includes('food')) || 
       descLower.includes('holiday') ||
       descLower.includes('trip') || 
       descLower.includes('tour') ||
@@ -579,15 +855,85 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('goibibo') ||
       descLower.includes('easemytrip') ||
       descLower.includes('oyo') ||
-      descLower.includes('airbnb')) return 'Expenses - Travel';
+      descLower.includes('airbnb') ||
+      descLower.includes('ixigo') ||
+      descLower.includes('cleartrip') ||
+      descLower.includes('yatra') ||
+      descLower.includes('agoda') ||
+      descLower.includes('trivago') ||
+      descLower.includes('booking.com') ||
+      descLower.includes('zostel') ||
+      descLower.includes('treebo') ||
+      descLower.includes('fab hotels') ||
+      descLower.includes('indigo') ||
+      descLower.includes('spicejet') ||
+      descLower.includes('air india') ||
+      descLower.includes('vistara') ||
+      descLower.includes('go first') ||
+      descLower.includes('akasa air') ||
+      descLower.includes('taj hotel') ||
+      descLower.includes('itc hotel') ||
+      descLower.includes('leela') ||
+      descLower.includes('oberoi')) return 'Expenses - Travel';
       
+  // Gifts & Donations - expanded
   if (descLower.includes('gift') || 
       descLower.includes('donation') ||
-      descLower.includes('charity')) return 'Expenses - Gifts & Donations';
+      descLower.includes('charity') ||
+      descLower.includes('present') ||
+      descLower.includes('contribute') ||
+      descLower.includes('offering') ||
+      descLower.includes('temple') ||
+      descLower.includes('fundraiser') ||
+      descLower.includes('relief fund') ||
+      descLower.includes('welfare') ||
+      descLower.includes('ngo')) return 'Expenses - Gifts & Donations';
       
+  // Home & Maintenance - expanded with furniture and appliances
   if (descLower.includes('maintenance') || 
       descLower.includes('repair') ||
-      descLower.includes('renovation')) return 'Expenses - Home & Maintenance';
+      descLower.includes('renovation') ||
+      descLower.includes('furniture') ||
+      descLower.includes('appliance') ||
+      descLower.includes('cleaning') ||
+      descLower.includes('plumber') ||
+      descLower.includes('electrician') ||
+      descLower.includes('carpenter') ||
+      descLower.includes('painter') ||
+      descLower.includes('urban company') ||
+      descLower.includes('homeservice') ||
+      descLower.includes('home centre') ||
+      descLower.includes('pepperfry') ||
+      descLower.includes('urban ladder') ||
+      descLower.includes('home town') ||
+      descLower.includes('godrej interio')) return 'Expenses - Home & Maintenance';
+  
+  // Rent & Housing
+  if (descLower.includes('rent') ||
+      descLower.includes('lease') ||
+      descLower.includes('society maintenance') ||
+      descLower.includes('apartment') ||
+      descLower.includes('house') ||
+      descLower.includes('property tax') ||
+      descLower.includes('nobroker') ||
+      descLower.includes('magicbricks') ||
+      descLower.includes('99acres') ||
+      descLower.includes('housing.com')) return 'Expenses - Rent & Housing';
+      
+  // Personal Care & Beauty
+  if (descLower.includes('salon') ||
+      descLower.includes('spa') ||
+      descLower.includes('haircut') ||
+      descLower.includes('beauty') ||
+      descLower.includes('cosmetics') ||
+      descLower.includes('grooming') ||
+      descLower.includes('makeup') ||
+      descLower.includes('wellness') ||
+      descLower.includes('skincare') ||
+      descLower.includes('nykaa') ||
+      descLower.includes('purplle') ||
+      descLower.includes('myntra beauty') ||
+      descLower.includes('lakme')) return 'Expenses - Personal Care';
       
   // ========== TRANSFER CATEGORIES ==========
   // Check for transaction methods only after checking specific categories
@@ -603,13 +949,18 @@ const extractCategory = useCallback((description, amount) => {
   if (descLower.includes('nwd') ||
       descLower.includes('atm') || 
       descLower.includes('cash withdrawal') ||
-      descLower.includes('cwl')) {
+      descLower.includes('cwl') ||
+      descLower.includes('cash at atm') ||
+      descLower.includes('cash with')) {
     // Categorize by location if available
     if (descLower.includes('bengaluru') || descLower.includes('bangalore')) return 'Cash Withdrawal - Bangalore';
     if (descLower.includes('mumbai') || descLower.includes('bombay')) return 'Cash Withdrawal - Mumbai';
     if (descLower.includes('delhi') || descLower.includes('new delhi')) return 'Cash Withdrawal - Delhi';
     if (descLower.includes('chennai')) return 'Cash Withdrawal - Chennai';
     if (descLower.includes('kolkata')) return 'Cash Withdrawal - Kolkata';
+    if (descLower.includes('hyderabad')) return 'Cash Withdrawal - Hyderabad';
+    if (descLower.includes('pune')) return 'Cash Withdrawal - Pune';
+    if (descLower.includes('ahmedabad')) return 'Cash Withdrawal - Ahmedabad';
     return 'Cash Withdrawal - ATM';
   }
   
@@ -617,7 +968,11 @@ const extractCategory = useCallback((description, amount) => {
   if (descLower.includes('tax') || 
       descLower.includes('gst') || 
       descLower.includes('tds') ||
-      descLower.includes('income tax')) return 'Taxes';
+      descLower.includes('income tax') ||
+      descLower.includes('advance tax') ||
+      descLower.includes('self assessment tax') ||
+      descLower.includes('itr') ||
+      descLower.includes('tax return')) return 'Taxes';
   
   // ========== FEES & CHARGES CATEGORIES ==========
   if (descLower.includes('fee') || 
@@ -625,9 +980,290 @@ const extractCategory = useCallback((description, amount) => {
       descLower.includes('penalty') ||
       descLower.includes('commission') ||
       descLower.includes('annual charge') ||
-      descLower.includes('maintenance charge')) return 'Bank Charges & Fees';
+      descLower.includes('maintenance charge') ||
+      descLower.includes('service charge') ||
+      descLower.includes('membership fee') ||
+      descLower.includes('processing fee') ||
+      descLower.includes('late payment') ||
+      descLower.includes('non maintenance')) return 'Bank Charges & Fees';
   
-  return 'Other';
+  // ========== MISCELLANEOUS SPECIFIC CATEGORIES ==========
+  // Digital Subscriptions
+  if (descLower.includes('subscription') ||
+      descLower.includes('renewal') ||
+      descLower.includes('membership') ||
+      descLower.includes('amazon prime') ||
+      descLower.includes('google one') ||
+      descLower.includes('apple one') ||
+      descLower.includes('microsoft') ||
+      descLower.includes('office 365') ||
+      descLower.includes('google play') ||
+      descLower.includes('app store') ||
+      descLower.includes('adobe') ||
+      descLower.includes('canva') ||
+      descLower.includes('norton') ||
+      descLower.includes('mcafee') ||
+      descLower.includes('vpn')) return 'Expenses - Digital Subscriptions';
+      
+  // Sports & Fitness
+  if (descLower.includes('gym') ||
+      descLower.includes('fitness') ||
+      descLower.includes('sports') ||
+      descLower.includes('workout') ||
+      descLower.includes('yoga') ||
+      descLower.includes('cult') ||
+      descLower.includes('cure.fit') ||
+      descLower.includes('decathlon') ||
+      descLower.includes('sport equipment') ||
+      descLower.includes('health club') ||
+      descLower.includes('swimming') ||
+      descLower.includes('cycling') ||
+      descLower.includes('trekking') ||
+      descLower.includes('marathon')) return 'Expenses - Sports & Fitness';
+      
+  // Communication
+  if (descLower.includes('recharge') ||
+      descLower.includes('airtel') ||
+      descLower.includes('jio') ||
+      descLower.includes('vi') ||
+      descLower.includes('vodafone') ||
+      descLower.includes('idea') ||
+      descLower.includes('bsnl') ||
+      descLower.includes('mobile bill') ||
+      descLower.includes('phone bill') ||
+      descLower.includes('prepaid') ||
+      descLower.includes('postpaid') ||
+      descLower.includes('data pack')) return 'Expenses - Communication';
+
+      // ========== SPECIALIZED PAYMENT METHODS ==========
+  // Credit Card Payments
+  if (descLower.includes('credit card payment') ||
+  descLower.includes('cc payment') ||
+  descLower.includes('card payment') ||
+  descLower.includes('credit card bill') ||
+  descLower.includes('cc bill payment') ||
+  descLower.includes('payment to credit card')) return 'Payments - Credit Card';
+
+// Bill Payments
+if (descLower.includes('bill payment') ||
+  descLower.includes('billpay') ||
+  descLower.includes('billdesk') ||
+  descLower.includes('paytm bill') ||
+  descLower.includes('phonepe bill') ||
+  descLower.includes('gpay bill') ||
+  descLower.includes('payment of bill') ||
+  descLower.includes('payu')) return 'Payments - Bills';
+
+// ========== WALLET TRANSACTIONS ==========
+// Digital Wallets
+if (descLower.includes('paytm') ||
+  descLower.includes('phonepe') ||
+  descLower.includes('amazon pay') ||
+  descLower.includes('gpay') ||
+  descLower.includes('google pay') ||
+  descLower.includes('mobikwik') ||
+  descLower.includes('freecharge') ||
+  descLower.includes('ola money') ||
+  descLower.includes('paypal') ||
+  descLower.includes('wallet')) {
+  
+  if (isCredit) return 'Wallet - Money Added';
+  return 'Wallet - Payment';
+}
+
+// ========== E-COMMERCE PLATFORMS ==========
+// Major E-commerce Platforms
+if (descLower.includes('amazon') ||
+  descLower.includes('flipkart') ||
+  descLower.includes('myntra') ||
+  descLower.includes('ajio') ||
+  descLower.includes('nykaa') ||
+  descLower.includes('meesho') ||
+  descLower.includes('snapdeal') ||
+  descLower.includes('tata cliq')) return 'Shopping - Online';
+
+// ========== FOOD DELIVERY ==========
+// Food Delivery Services
+if (descLower.includes('swiggy') ||
+  descLower.includes('zomato') ||
+  descLower.includes('food panda') ||
+  descLower.includes('uber eats') ||
+  descLower.includes('fasoos') ||
+  descLower.includes('freshmenu')) return 'Food & Dining - Delivery';
+
+// ========== GROCERY DELIVERY ==========
+// Grocery Delivery Services
+if (descLower.includes('bigbasket') ||
+  descLower.includes('grofers') ||
+  descLower.includes('blinkit') ||
+  descLower.includes('supr daily') ||
+  descLower.includes('milkbasket') ||
+  descLower.includes('dmart ready') ||
+  descLower.includes('jiomart') ||
+  descLower.includes('nature\'s basket') ||
+  descLower.includes('licious') ||
+  descLower.includes('freshtohome')) return 'Shopping - Groceries';
+
+// ========== RIDE SHARING ==========
+// Ride Sharing Services
+if (descLower.includes('uber') ||
+  descLower.includes('ola') ||
+  descLower.includes('rapido') ||
+  descLower.includes('meru') ||
+  descLower.includes('careem') ||
+  descLower.includes('taxi') ||
+  descLower.includes('cab')) return 'Transportation - Ride Sharing';
+
+// ========== INTERNATIONAL TRANSACTIONS ==========
+// Foreign Transactions
+if (descLower.includes('forex') ||
+  descLower.includes('foreign') ||
+  descLower.includes('international') ||
+  descLower.includes('remittance') ||
+  descLower.includes('currency conversion') ||
+  descLower.includes('exchange rate') ||
+  descLower.includes('western union') ||
+  descLower.includes('moneygram') ||
+  descLower.includes('xoom')) return 'International - Foreign Exchange';
+  
+// ========== BUSINESS RELATED ==========
+// Business Expenses
+if (descLower.includes('office') ||
+  descLower.includes('business') ||
+  descLower.includes('corporate') ||
+  descLower.includes('client') ||
+  descLower.includes('vendor') ||
+  descLower.includes('supplier') ||
+  descLower.includes('professional') ||
+  descLower.includes('consulting') ||
+  descLower.includes('b2b')) return 'Business - Expenses';
+
+// ========== FAMILY & RELATIONSHIPS ==========
+// Family Related
+if (descLower.includes('family') ||
+  descLower.includes('child') ||
+  descLower.includes('kid') ||
+  descLower.includes('baby') ||
+  descLower.includes('parent') ||
+  descLower.includes('mother') ||
+  descLower.includes('father') ||
+  descLower.includes('spouse') ||
+  descLower.includes('husband') ||
+  descLower.includes('wife') ||
+  descLower.includes('son') ||
+  descLower.includes('daughter')) return 'Family - Related';
+  
+// ========== LUXURY & PREMIUM ==========
+// Luxury Purchases
+if (descLower.includes('luxury') ||
+  descLower.includes('premium') ||
+  descLower.includes('designer') ||
+  descLower.includes('jewellery') ||
+  descLower.includes('jewelry') ||
+  descLower.includes('louis vuitton') ||
+  descLower.includes('gucci') ||
+  descLower.includes('prada') ||
+  descLower.includes('rolex') ||
+  descLower.includes('tiffany') ||
+  descLower.includes('cartier') ||
+  descLower.includes('tanishq') ||
+  descLower.includes('titan')) return 'Shopping - Luxury';
+
+// ========== TECH & GADGETS ==========
+// Technology Purchases
+if (descLower.includes('electronics') ||
+  descLower.includes('gadget') ||
+  descLower.includes('appliance') ||
+  descLower.includes('tech') ||
+  descLower.includes('laptop') ||
+  descLower.includes('mobile phone') ||
+  descLower.includes('smartphone') ||
+  descLower.includes('tablet') ||
+  descLower.includes('camera') ||
+  descLower.includes('headphone') ||
+  descLower.includes('speaker') ||
+  descLower.includes('reliance digital') ||
+  descLower.includes('croma') ||
+  descLower.includes('vijay sales') ||
+  descLower.includes('apple store') ||
+  descLower.includes('samsung') ||
+  descLower.includes('oneplus') ||
+  descLower.includes('mi store')) return 'Shopping - Electronics';
+
+// ========== SHARED PAYMENT APPS ==========
+// Split payments and shared expenses
+if (descLower.includes('splitwise') ||
+  descLower.includes('split') ||
+  descLower.includes('share expense') ||
+  descLower.includes('share bill') ||
+  descLower.includes('group expense')) return 'Payments - Split';
+
+// ========== SPECIFIC INDIAN BANKS ==========
+// Detect transfers to/from specific banks
+if (descLower.includes('sbi') ||
+  descLower.includes('state bank') ||
+  descLower.includes('hdfc') ||
+  descLower.includes('icici') ||
+  descLower.includes('axis bank') ||
+  descLower.includes('kotak') ||
+  descLower.includes('yes bank') ||
+  descLower.includes('idfc') ||
+  descLower.includes('pnb') ||
+  descLower.includes('punjab national') ||
+  descLower.includes('bank of baroda') ||
+  descLower.includes('union bank') ||
+  descLower.includes('canara bank') ||
+  descLower.includes('federal bank')) {
+  
+  if (isCredit) return 'Transfer - Received from Bank';
+  return 'Transfer - Sent to Bank';
+}
+
+// ========== PERIODIC PAYMENTS ==========
+// Detect monthly, quarterly, annual payments
+if (descLower.includes('monthly') ||
+  descLower.includes('quarterly') ||
+  descLower.includes('annual') ||
+  descLower.includes('yearly') ||
+  descLower.includes('subscription') ||
+  descLower.includes('recurring')) return 'Payments - Recurring';
+
+// ========== FINTECH APPS ==========
+// Popular fintech apps
+if (descLower.includes('cred') ||
+  descLower.includes('jupiter') ||
+  descLower.includes('slice') ||
+  descLower.includes('fi money') ||
+  descLower.includes('niyo') ||
+  descLower.includes('groww') ||
+  descLower.includes('upstox') ||
+  descLower.includes('smallcase') ||
+  descLower.includes('zerodha')) return 'Fintech - Apps';
+
+// ========== SALARY SPECIFIC ==========
+// If description contains salary-specific terms
+if (descLower.includes('salary') ||
+  descLower.includes('compensation') ||
+  descLower.includes('payroll') ||
+  descLower.includes('pay slip') ||
+  descLower.includes('wage') ||
+  descLower.includes('stipend') ||
+  descLower.includes('remuneration')) return 'Income - Salary';
+
+// ========== LAST RESORT - INTELLIGENT GUESSING ==========
+// Use amount patterns to guess the category when all else fails
+if (isCredit) {
+if (amount > 10000) return 'Income - Large Credit';
+if (amount > 1000) return 'Income - Medium Credit';
+return 'Income - Small Credit';
+} else {
+if (amount > 10000) return 'Expenses - Large Payment';
+if (amount > 1000) return 'Expenses - Medium Payment';
+return 'Expenses - Small Payment';
+}
+
+// We should never reach here, but just in case
+return 'Other';
 }, []);
 
   // Parse PDF file
@@ -4054,20 +4690,60 @@ const [submitting, setSubmitting] = useState(false);
                   </button>
                 </div>
               </div>
-              <div className="p-4 sm:p-6 space-y-4 text-sm sm:text-base text-white/70">
-                <section>
-                  <h3 className="text-white font-semibold mb-2">Data Privacy</h3>
-                  <p>Your financial data is processed entirely in your browser. We don't store or transmit any of your information to external servers.</p>
-                </section>
-                <section>
-                  <h3 className="text-white font-semibold mb-2">Security</h3>
-                  <p>All analysis is performed locally on your device. Your bank statements remain private and are never uploaded to any server.</p>
-                </section>
-                <section>
-                  <h3 className="text-white font-semibold mb-2">Usage Terms</h3>
-                  <p>This tool is provided for personal financial analysis. The insights generated are based on the data you provide and should not be considered as financial advice.</p>
-                </section>
-              </div>
+
+
+<div className="p-4 sm:p-6 space-y-4 text-sm sm:text-base text-white/70">
+  <section>
+    <h3 className="text-white font-semibold mb-2">Data Privacy</h3>
+    <p>Your financial data is processed entirely in your browser. We don't store or transmit any of your information to external servers.</p>
+  </section>
+  
+  <section>
+    <h3 className="text-white font-semibold mb-2">Security</h3>
+    <p>All analysis is performed locally on your device. Your bank statements remain private and are never uploaded to any server.</p>
+  </section>
+  
+  <section>
+    <h3 className="text-white font-semibold mb-2">How It Works</h3>
+    <p>We use client-side JavaScript to analyze your financial data, which means:</p>
+    <ul className="list-disc pl-5 mt-2 space-y-1">
+      <li>Your data never leaves your device</li>
+      <li>Nothing is stored on our servers</li>
+      <li>No one else can see your financial information</li>
+      <li>Refresh the page and all data is gone</li>
+    </ul>
+  </section>
+  <section className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+  <h3 className="text-yellow-400 font-semibold mb-2">Disclaimer</h3>
+  <p className="text-white/70">
+    This app is currently in beta. While we do our best to provide accurate analysis, there may be rough edges and occasional inaccuracies in how your data is processed and displayed.
+  </p>
+  <ul className="list-disc pl-5 mt-2 space-y-1 text-white/70">
+    <li>Transaction categorization may not always be 100% accurate</li>
+    <li>Complex date formats in some bank statements may be interpreted incorrectly</li>
+    <li>Certain special characters or formatting in PDFs might cause parsing issues</li>
+    <li>Visual representations and calculated totals should be verified against your actual statements</li>
+  </ul>
+  <p className="text-white/70 mt-2">
+    Please review all information carefully and use the insights as guidance rather than definitive financial information. We're continuously improving the app to enhance accuracy and performance.
+  </p>
+</section>
+ 
+  <section>
+    <h3 className="text-white font-semibold mb-2">Cookies & Local Storage</h3>
+    <p>We use localStorage to remember your UI preferences, such as whether you've dismissed the privacy notice. No financial data is stored in cookies or localStorage.</p>
+  </section>
+  
+  <section>
+    <h3 className="text-white font-semibold mb-2">Usage Terms</h3>
+    <p>This tool is provided for personal financial analysis. The insights generated are based on the data you provide and should not be considered as financial advice.</p>
+  </section>
+  
+  <section>
+    <h3 className="text-white font-semibold mb-2">Your Rights</h3>
+    <p>Since we don't collect or store your personal data, there's nothing for us to delete, correct, or export. You have complete control over your data at all times.</p>
+  </section>
+</div>
               <div className="p-4 sm:p-6 border-t border-white/10 flex justify-end">
                 <button
                   onClick={() => setIsPrivacyModalOpen(false)}
@@ -4363,6 +5039,8 @@ const [submitting, setSubmitting] = useState(false);
     </motion.div>
   )}
 </AnimatePresence>
+<PrivacyNotice />
+
     </div>
   );
 };
