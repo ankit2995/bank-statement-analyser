@@ -11,11 +11,12 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 import PrivacyModal from './PrivacyModal';
 import { getAnalytics, logEvent } from "firebase/analytics";
+import { initializeApp } from "firebase/app";
 import PrivacyNotice from './PrivacyNotice';
 // Configure PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-// Add custom styles for logo animations
+// Add custom styles for logo animations 
 const logoAnimationStyles = `
   @keyframes pulse-slow {
     0%, 100% { opacity: 1; }
@@ -88,8 +89,13 @@ const firebaseConfig = {
 };
 
 const BankStatementAnalyzer = () => {
-  // Add this at the beginning of your BankStatementAnalyzer component
-// Right after the component definition but before your useEffect hooks
+  useEffect(() => {
+    // Initialize Firebase with your existing config
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    window.analytics = analytics; // Store analytics in window for easier access
+  }, []);
+
 
 
   // Hidden form for Netlify - Add this right after your component definition
@@ -374,6 +380,12 @@ const BankStatementAnalyzer = () => {
       setFileName(uploadedFile.name);
       setError('');
       setAnalysisResults(null);
+      if (window.analytics) {
+        logEvent(window.analytics, 'file_upload', { 
+          file_type: uploadedFile.type,
+          file_name: uploadedFile.name
+        });
+      }
     }
   };
 
@@ -2798,7 +2810,12 @@ const monthlyAnalysis = Object.values(monthlyData)
   const analyzeStatement = async () => {
     
     if (!file) return;
-    
+      // Add this line to log an event
+  if (window.analytics) {
+    logEvent(window.analytics, 'analysis_started', { 
+      file_name: fileName 
+    });
+  }
     setLoading(true);
     setError('');
     
@@ -2825,6 +2842,12 @@ const monthlyAnalysis = Object.values(monthlyData)
       // Analyze transactions
       const results = analyzeTransactions(transactions);
       setAnalysisResults(results);
+      if (window.analytics) {
+        logEvent(window.analytics, 'analysis_completed', { 
+          transaction_count: transactions.length,
+          categories_count: results.categorySpendingArray.length
+        });
+      }
     } catch (error) {
       console.error('Analysis error:', error);
       setError(error.message || 'Error analyzing statement. Please try again.');
@@ -2907,10 +2930,17 @@ const handleFeedbackSubmit = async (e) => {
       
       // Handle success
       showNotification('✨ Thanks for the feedback!', 'success');
+      
       setIsFeedbackModalOpen(false);
       setHasGivenFeedback(true);
       setFeedbackEmoji('');
       setFeedbackComment('');
+      if (window.analytics) {
+        logEvent(window.analytics, 'feedback_submitted', { 
+          emoji: feedbackEmoji,
+          has_comment: feedbackComment.length > 0
+        });
+      }
     }
   } catch (error) {
     console.error('Error submitting feedback:', error);
@@ -3484,7 +3514,15 @@ const [submitting, setSubmitting] = useState(false);
     {['summary', 'monthly', 'categories', 'patterns', 'insights'].map((tab) => (
       <motion.button
         key={tab}
-        onClick={() => setActiveTab(tab)}
+        onClick={() => {setActiveTab(tab);
+
+              // Add this to track tab navigation
+    if (window.analytics) {
+      logEvent(window.analytics, 'tab_view', { tab_name: tab });
+    }
+  
+        }}
+        
         className={`py-2 px-2 sm:py-4 sm:px-6 text-center border-b-2 font-medium text-xs sm:text-sm transition-all duration-300 ${
           activeTab === tab
             ? 'border-blue-400 text-blue-400'
